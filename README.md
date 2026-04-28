@@ -17,21 +17,26 @@ mysql -u root -p < database/schema-v2.sql
 mysql -u root -p gym_management_system_v2 < database/sample-data-v2.sql
 ```
 
-The schema script creates `gym_management_system_v2`. The seed script inserts demo users, plans, members, trainers, subscriptions, payments, sessions, bookings, and attendance records.
+These commands work in Bash or Git Bash. On Windows PowerShell, either run them from Git Bash or import the files through the MySQL shell/client, for example:
 
-If your MySQL user is not `root`, import the same files with a user that has permission to create databases and insert data. Then copy `.env.example` to `server/.env` and update the database credentials:
-
-```bash
-cp .env.example server/.env
+```sql
+SOURCE database/schema-v2.sql;
+USE gym_management_system_v2;
+SOURCE database/sample-data-v2.sql;
 ```
+
+The schema script creates `gym_management_system_v2`. The seed script inserts demo users, plans, members, trainers, subscriptions, payments, sessions, bookings, and attendance records. If your MySQL user is not `root`, import the same files with a user that has permission to create databases and insert data.
 
 ## App Setup
 
 ```bash
+cp .env.example server/.env
 npm install
 npm run install:all
 npm run dev
 ```
+
+Edit `server/.env` before starting the app if your MySQL `root` user has a password or if you use another MySQL account.
 
 Frontend: http://localhost:5173
 
