@@ -1,4 +1,4 @@
-USE gym_management_system_v2;
+USE gym_management_system;
 
 INSERT INTO users (username, password_hash, role, full_name, email, phone, status) VALUES
 ('admin1', 'hashed_admin_password', 'admin', 'Admin User', 'admin@example.com', '0500000000', 'active'),

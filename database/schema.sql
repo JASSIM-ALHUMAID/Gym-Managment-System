@@ -1,5 +1,5 @@
-CREATE DATABASE IF NOT EXISTS gym_management_system_v2;
-USE gym_management_system_v2;
+CREATE DATABASE IF NOT EXISTS gym_management_system;
+USE gym_management_system;
 
 CREATE TABLE users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,
