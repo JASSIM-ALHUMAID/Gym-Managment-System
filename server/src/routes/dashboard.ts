@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import type { RowDataPacket } from 'mysql2';
-import { requireDemoUser } from '../auth.js';
+import { requireDemoUser, requireRole } from '../auth.js';
 import { pool } from '../db.js';
 import { asyncHandler } from '../http.js';
 
@@ -14,7 +14,8 @@ async function count(sql: string) {
 export const dashboardRouter = Router();
 
 dashboardRouter.get('/', asyncHandler(async (req, res) => {
-  await requireDemoUser(req);
+  const user = await requireDemoUser(req);
+  requireRole(user, ['admin', 'staff']);
 
   const [activeMembers, activeSubscriptions, scheduledSessions, openPayments] = await Promise.all([
     count("SELECT COUNT(*) AS count FROM users WHERE role = 'member' AND status = 'active'"),

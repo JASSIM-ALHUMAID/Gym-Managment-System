@@ -17,7 +17,14 @@ function parseId(value: unknown, label: string) {
 }
 
 async function memberExists(connection: PoolConnection, memberId: number) {
-  const [rows] = await connection.query<RowDataPacket[]>('SELECT member_id FROM members WHERE member_id = ? FOR UPDATE', [memberId]);
+  const [rows] = await connection.query<RowDataPacket[]>(
+    `SELECT members.member_id
+       FROM members
+       JOIN users ON users.user_id = members.user_id
+      WHERE members.member_id = ? AND users.status = 'active'
+      FOR UPDATE`,
+    [memberId]
+  );
   return rows.length > 0;
 }
 

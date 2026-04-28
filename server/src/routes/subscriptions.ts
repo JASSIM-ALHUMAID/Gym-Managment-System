@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireDemoUser, requireRole } from '../auth.js';
 import { pool } from '../db.js';
-import { asyncHandler } from '../http.js';
+import { HttpError, asyncHandler } from '../http.js';
 
 export const subscriptionsRouter = Router();
 
@@ -9,6 +9,7 @@ subscriptionsRouter.get('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
 
   if (user.role === 'member') {
+    if (!user.member_id) throw new HttpError(403, 'Member profile is required');
     const [rows] = await pool.query(
       `SELECT s.*, p.plan_name, p.duration_months, p.price
          FROM subscriptions s

@@ -31,12 +31,18 @@ vi.mock('../src/auth.js', () => ({
 
 const { bookingsRouter } = await import('../src/routes/bookings.js');
 const { attendanceRouter } = await import('../src/routes/attendance.js');
+const { dashboardRouter } = await import('../src/routes/dashboard.js');
+const { paymentsRouter } = await import('../src/routes/payments.js');
+const { subscriptionsRouter } = await import('../src/routes/subscriptions.js');
 
 function createApp() {
   const app = express();
   app.use(express.json());
   app.use('/api/bookings', bookingsRouter);
   app.use('/api/attendance', attendanceRouter);
+  app.use('/api/dashboard', dashboardRouter);
+  app.use('/api/payments', paymentsRouter);
+  app.use('/api/subscriptions', subscriptionsRouter);
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     sendError(error, res);
   });
@@ -63,6 +69,8 @@ describe('workflow route handlers', () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'Session is full' });
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('JOIN users'), [10]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining("users.status = 'active'"), [10]);
     expect(mocks.connection.rollback).toHaveBeenCalledOnce();
     expect(mocks.connection.release).toHaveBeenCalledOnce();
   });
@@ -85,6 +93,35 @@ describe('workflow route handlers', () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'Attendance status must be present, absent, or late' });
+    expect(mocks.pool.query).not.toHaveBeenCalled();
+  });
+
+  it('requires admin or staff access for dashboard counts', async () => {
+    mocks.pool.query.mockResolvedValue([[{ count: 0 }]]);
+
+    const response = await request(createApp()).get('/api/dashboard');
+
+    expect(response.status).toBe(200);
+    expect(mocks.requireRole).toHaveBeenCalledWith(expect.objectContaining({ role: 'admin' }), ['admin', 'staff']);
+  });
+
+  it('returns a clean error when member payments are requested without a member profile', async () => {
+    mocks.requireDemoUser.mockResolvedValueOnce({ user_id: 2, username: 'member', role: 'member', full_name: 'Member', email: null, status: 'active', member_id: null });
+
+    const response = await request(createApp()).get('/api/payments');
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: 'Member profile is required' });
+    expect(mocks.pool.query).not.toHaveBeenCalled();
+  });
+
+  it('returns a clean error when member subscriptions are requested without a member profile', async () => {
+    mocks.requireDemoUser.mockResolvedValueOnce({ user_id: 2, username: 'member', role: 'member', full_name: 'Member', email: null, status: 'active', member_id: null });
+
+    const response = await request(createApp()).get('/api/subscriptions');
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: 'Member profile is required' });
     expect(mocks.pool.query).not.toHaveBeenCalled();
   });
 

@@ -49,6 +49,10 @@ npm run build
 npm test
 ```
 
+## Demo Auth
+
+This project uses demo-only authentication for local coursework review. The frontend stores the selected demo user and sends that identity to the API in the `x-demo-user-id` header. This is not production security and must not be used as real authentication or authorization outside the local demo environment.
+
 ## Demo Users
 
 The app uses a username-only demo login selector. No password is required for demo access.
