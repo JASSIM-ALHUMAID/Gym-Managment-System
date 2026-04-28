@@ -1,0 +1,197 @@
+:root {
+  color: #18212f;
+  background: #eef3f8;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  background: #1f6feb;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0.8rem 1.2rem;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.secondary {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.login-page {
+  align-items: center;
+  background: radial-gradient(circle at top left, #dbeafe, transparent 32rem), #0f172a;
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.login-card {
+  background: #fff;
+  border-radius: 28px;
+  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.28);
+  max-width: 440px;
+  padding: 2rem;
+  width: 100%;
+}
+
+.login-card h1,
+.dashboard-card h1,
+.sidebar h2 {
+  margin: 0;
+}
+
+.login-card form {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1.5rem;
+}
+
+.login-card label {
+  font-weight: 700;
+}
+
+.login-card input {
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+}
+
+.eyebrow {
+  color: #1f6feb;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  margin: 0 0 0.45rem;
+  text-transform: uppercase;
+}
+
+.muted {
+  color: #64748b;
+  margin: 0.55rem 0 0;
+}
+
+.error {
+  color: #b91c1c;
+  font-weight: 700;
+  margin: 0;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: #0f172a;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+.sidebar .muted {
+  color: #94a3b8;
+  text-transform: capitalize;
+}
+
+.sidebar nav {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.sidebar nav a {
+  border-radius: 14px;
+  color: #cbd5e1;
+  padding: 0.75rem 0.9rem;
+}
+
+.sidebar nav a.active,
+.sidebar nav a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.dashboard-content {
+  padding: 2rem;
+}
+
+.dashboard-card {
+  background: #fff;
+  border-radius: 28px;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+  padding: 2rem;
+}
+
+.stats-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 1.5rem;
+}
+
+.stats-grid article {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 1rem;
+}
+
+.stats-grid span {
+  color: #64748b;
+  display: block;
+  font-size: 0.9rem;
+}
+
+.stats-grid strong {
+  display: block;
+  font-size: 2rem;
+  margin-top: 0.35rem;
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    padding: 1.25rem;
+  }
+
+  .dashboard-content {
+    padding: 1rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
