@@ -2,7 +2,9 @@ import cors from 'cors';
 import express from 'express';
 import { pool } from './db.js';
 import { asyncHandler, sendError } from './http.js';
+import { attendanceRouter } from './routes/attendance.js';
 import { authRouter } from './routes/auth.js';
+import { bookingsRouter } from './routes/bookings.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { membersRouter } from './routes/members.js';
 import { paymentsRouter } from './routes/payments.js';
@@ -24,6 +26,8 @@ app.get('/api/health', asyncHandler(async (_req, res) => {
 }));
 
 app.use('/api/auth', authRouter);
+app.use('/api/bookings', bookingsRouter);
+app.use('/api/attendance', attendanceRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/plans', plansRouter);
