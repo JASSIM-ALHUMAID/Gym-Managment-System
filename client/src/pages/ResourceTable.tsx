@@ -14,6 +14,7 @@ type ResourceTableProps<Row extends ResourceRow> = {
   columns: ResourceColumn<Row>[];
   loading?: boolean;
   error?: string | null;
+  getRowKey?: (row: Row, index: number) => string | number;
 };
 
 function formatCell(value: unknown) {
@@ -22,7 +23,11 @@ function formatCell(value: unknown) {
   return String(value);
 }
 
-export default function ResourceTable<Row extends ResourceRow>({ title, rows, columns, loading = false, error = null }: ResourceTableProps<Row>) {
+function fallbackRowKey(row: ResourceRow, index: number) {
+  return String(row.id ?? row.user_id ?? row.member_id ?? row.trainer_id ?? row.plan_id ?? row.session_id ?? row.booking_id ?? row.attendance_id ?? row.payment_id ?? row.subscription_id ?? index);
+}
+
+export default function ResourceTable<Row extends ResourceRow>({ title, rows, columns, loading = false, error = null, getRowKey }: ResourceTableProps<Row>) {
   return (
     <section className="panel">
       <div className="section-heading">
@@ -47,7 +52,7 @@ export default function ResourceTable<Row extends ResourceRow>({ title, rows, co
             </thead>
             <tbody>
               {rows.map((row, index) => (
-                <tr key={String(row.id ?? row.user_id ?? row.member_id ?? row.trainer_id ?? row.plan_id ?? row.session_id ?? row.booking_id ?? row.attendance_id ?? row.payment_id ?? row.subscription_id ?? index)}>
+                <tr key={getRowKey ? getRowKey(row, index) : fallbackRowKey(row, index)}>
                   {columns.map((column) => (
                     <td key={String(column.key)}>{column.render ? column.render(row) : formatCell(row[column.key])}</td>
                   ))}

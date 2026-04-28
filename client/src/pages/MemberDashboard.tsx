@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth';
 import ResourceTable, { type ResourceColumn, type ResourceRow } from './ResourceTable';
 
@@ -49,6 +49,14 @@ type PlanRow = ResourceRow & {
   description: string | null;
 };
 
+type MemberDashboardData = {
+  subscriptions: SubscriptionRow[];
+  payments: PaymentRow[];
+  sessions: SessionRow[];
+  bookings: BookingRow[];
+  plans: PlanRow[];
+};
+
 const subscriptionColumns: ResourceColumn<SubscriptionRow>[] = [
   { key: 'subscription_id', label: 'ID' },
   { key: 'plan_name', label: 'Plan' },
@@ -76,17 +84,20 @@ const planColumns: ResourceColumn<PlanRow>[] = [
 
 export default function MemberDashboard() {
   const { request } = useAuth();
+  const mountedRef = useRef(true);
+  const actionPendingRef = useRef(false);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [actionId, setActionId] = useState<number | null>(null);
+  const [isActionPending, setIsActionPending] = useState(false);
+  const [pendingActionLabel, setPendingActionLabel] = useState('Working...');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  async function refreshAll() {
+  async function loadMemberDashboardData(): Promise<MemberDashboardData> {
     const [subscriptionData, paymentData, sessionData, bookingData, planData] = await Promise.all([
       request<{ subscriptions: SubscriptionRow[] }>('/subscriptions'),
       request<{ payments: PaymentRow[] }>('/payments'),
@@ -94,18 +105,37 @@ export default function MemberDashboard() {
       request<{ bookings: BookingRow[] }>('/bookings'),
       request<{ plans: PlanRow[] }>('/plans')
     ]);
-    setSubscriptions(subscriptionData.subscriptions);
-    setPayments(paymentData.payments);
-    setSessions(sessionData.sessions.filter((session) => session.status === 'scheduled'));
-    setBookings(bookingData.bookings);
-    setPlans(planData.plans);
+    return {
+      subscriptions: subscriptionData.subscriptions,
+      payments: paymentData.payments,
+      sessions: sessionData.sessions.filter((session) => session.status === 'scheduled'),
+      bookings: bookingData.bookings,
+      plans: planData.plans
+    };
   }
+
+  function applyMemberDashboardData(data: MemberDashboardData) {
+    setSubscriptions(data.subscriptions);
+    setPayments(data.payments);
+    setSessions(data.sessions);
+    setBookings(data.bookings);
+    setPlans(data.plans);
+  }
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    refreshAll()
+    loadMemberDashboardData()
+      .then((data) => {
+        if (!cancelled) applyMemberDashboardData(data);
+      })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load member dashboard');
       })
@@ -117,18 +147,27 @@ export default function MemberDashboard() {
     };
   }, [request]);
 
-  async function runBookingAction(id: number, action: () => Promise<unknown>, successMessage: string) {
-    setActionId(id);
+  async function refreshAllSafely() {
+    const data = await loadMemberDashboardData();
+    if (mountedRef.current) applyMemberDashboardData(data);
+  }
+
+  async function runBookingAction(action: () => Promise<unknown>, successMessage: string, pendingLabel: string) {
+    if (actionPendingRef.current) return;
+    actionPendingRef.current = true;
+    setIsActionPending(true);
+    setPendingActionLabel(pendingLabel);
     setError(null);
     setMessage(null);
     try {
       await action();
-      await refreshAll();
-      setMessage(successMessage);
+      await refreshAllSafely();
+      if (mountedRef.current) setMessage(successMessage);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Booking action failed');
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Booking action failed');
     } finally {
-      setActionId(null);
+      actionPendingRef.current = false;
+      if (mountedRef.current) setIsActionPending(false);
     }
   }
 
@@ -146,9 +185,11 @@ export default function MemberDashboard() {
       label: 'Action',
       render: (session) => {
         const alreadyBooked = activeBookingBySession.has(session.session_id);
+        const isFull = Number(session.booked_count) >= Number(session.capacity);
+        const label = alreadyBooked ? 'Booked' : isFull ? 'Full' : isActionPending ? pendingActionLabel : 'Book';
         return (
-          <button type="button" className="small-button" disabled={alreadyBooked || actionId === session.session_id} onClick={() => runBookingAction(session.session_id, () => request('/bookings', { method: 'POST', body: JSON.stringify({ session_id: session.session_id }) }), 'Session booked.')}>
-            {alreadyBooked ? 'Booked' : actionId === session.session_id ? 'Booking...' : 'Book'}
+          <button type="button" className="small-button" disabled={alreadyBooked || isFull || isActionPending} onClick={() => runBookingAction(() => request('/bookings', { method: 'POST', body: JSON.stringify({ session_id: session.session_id }) }), 'Session booked.', 'Booking...')}>
+            {label}
           </button>
         );
       }
@@ -166,8 +207,8 @@ export default function MemberDashboard() {
       key: 'action',
       label: 'Action',
       render: (booking) => booking.booking_status === 'booked' ? (
-        <button type="button" className="small-button danger" disabled={actionId === booking.booking_id} onClick={() => runBookingAction(booking.booking_id, () => request(`/bookings/${booking.booking_id}/cancel`, { method: 'PATCH' }), 'Booking cancelled.')}>
-          {actionId === booking.booking_id ? 'Cancelling...' : 'Cancel'}
+        <button type="button" className="small-button danger" disabled={isActionPending} onClick={() => runBookingAction(() => request(`/bookings/${booking.booking_id}/cancel`, { method: 'PATCH' }), 'Booking cancelled.', 'Cancelling...')}>
+          {isActionPending ? pendingActionLabel : 'Cancel'}
         </button>
       ) : '-'
     }
@@ -187,12 +228,12 @@ export default function MemberDashboard() {
       {message ? <p className="success" role="status">{message}</p> : null}
 
       <div className="two-column">
-        <ResourceTable title="Subscriptions" rows={subscriptions} columns={subscriptionColumns} loading={loading} />
-        <ResourceTable title="Payments" rows={payments} columns={paymentColumns} loading={loading} />
+        <ResourceTable title="Subscriptions" rows={subscriptions} columns={subscriptionColumns} loading={loading} getRowKey={(subscription) => subscription.subscription_id} />
+        <ResourceTable title="Payments" rows={payments} columns={paymentColumns} loading={loading} getRowKey={(payment) => payment.payment_id} />
       </div>
-      <ResourceTable title="Available scheduled sessions" rows={sessions} columns={sessionColumns} loading={loading} />
-      <ResourceTable title="Booked sessions" rows={bookings} columns={bookingColumns} loading={loading} />
-      <ResourceTable title="Membership plans" rows={plans} columns={planColumns} loading={loading} />
+      <ResourceTable title="Available scheduled sessions" rows={sessions} columns={sessionColumns} loading={loading} getRowKey={(session) => session.session_id} />
+      <ResourceTable title="Booked sessions" rows={bookings} columns={bookingColumns} loading={loading} getRowKey={(booking) => booking.booking_id} />
+      <ResourceTable title="Membership plans" rows={plans} columns={planColumns} loading={loading} getRowKey={(plan) => plan.plan_id} />
     </div>
   );
 }

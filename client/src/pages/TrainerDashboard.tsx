@@ -110,14 +110,16 @@ export default function TrainerDashboard() {
     setMessage(null);
 
     try {
-      await Promise.all(attendance.map((row) => request('/attendance', {
-        method: 'POST',
-        body: JSON.stringify({
-          session_id: selectedSessionId,
-          member_id: row.member_id,
-          attendance_status: statusByMember[row.member_id] ?? 'present'
-        })
-      })));
+      for (const row of attendance) {
+        await request('/attendance', {
+          method: 'POST',
+          body: JSON.stringify({
+            session_id: selectedSessionId,
+            member_id: row.member_id,
+            attendance_status: statusByMember[row.member_id] ?? 'present'
+          })
+        });
+      }
       const refreshed = await request<{ attendance: AttendanceRow[] }>(`/attendance/session/${selectedSessionId}`);
       setAttendance(refreshed.attendance);
       setMessage('Attendance saved.');
@@ -138,7 +140,7 @@ export default function TrainerDashboard() {
         </div>
       </section>
 
-      <ResourceTable title="Assigned sessions" rows={sessions} columns={sessionColumns} loading={sessionsLoading} error={error && !selectedSessionId ? error : null} />
+      <ResourceTable title="Assigned sessions" rows={sessions} columns={sessionColumns} loading={sessionsLoading} error={error && !selectedSessionId ? error : null} getRowKey={(session) => session.session_id} />
 
       <section className="panel">
         <div className="section-heading">
@@ -161,7 +163,7 @@ export default function TrainerDashboard() {
 
         {!attendanceLoading && attendance.length > 0 ? (
           <form className="attendance-form" onSubmit={handleSubmit}>
-            <ResourceTable title="Booked members" rows={attendance} columns={attendanceColumns} />
+            <ResourceTable title="Booked members" rows={attendance} columns={attendanceColumns} getRowKey={(row) => row.member_id} />
             <div className="attendance-list">
               {attendance.map((row) => (
                 <label className="inline-field" key={row.member_id}>
