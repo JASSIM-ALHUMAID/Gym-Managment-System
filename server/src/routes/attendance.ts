@@ -3,20 +3,15 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { requireDemoUser, requireRole } from '../auth.js';
 import { pool } from '../db.js';
 import { HttpError, asyncHandler } from '../http.js';
+import { getMarkedByTrainerId, isAttendanceStatus } from '../workflowRules.js';
 
 type SessionTrainerRow = { trainer_id: number } & RowDataPacket;
 type CountRow = { count: number } & RowDataPacket;
-
-const attendanceStatuses = ['present', 'absent', 'late'] as const;
 
 function parseId(value: unknown, label: string) {
   const id = Number(value);
   if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, `Valid ${label} is required`);
   return id;
-}
-
-function isAttendanceStatus(value: string): value is typeof attendanceStatuses[number] {
-  return attendanceStatuses.includes(value as typeof attendanceStatuses[number]);
 }
 
 async function getSessionTrainer(sessionId: number) {
@@ -109,12 +104,8 @@ attendanceRouter.post('/', asyncHandler(async (req, res) => {
   );
   if ((bookingRows[0]?.count ?? 0) === 0) throw new HttpError(400, 'Member has not booked this session');
 
-  let markedByTrainerId = session.trainer_id;
-  if ((user.role === 'admin' || user.role === 'staff') && req.body.marked_by_trainer_id !== undefined) {
-    markedByTrainerId = parseId(req.body.marked_by_trainer_id, 'marked by trainer id');
-    const [trainerRows] = await pool.query<CountRow[]>('SELECT COUNT(*) AS count FROM trainers WHERE trainer_id = ?', [markedByTrainerId]);
-    if ((trainerRows[0]?.count ?? 0) === 0) throw new HttpError(404, 'Trainer was not found');
-  }
+  const submittedTrainerId = req.body.marked_by_trainer_id === undefined ? undefined : parseId(req.body.marked_by_trainer_id, 'marked by trainer id');
+  const markedByTrainerId = getMarkedByTrainerId(session.trainer_id, submittedTrainerId);
 
   const [result] = await pool.query<ResultSetHeader>(
     `INSERT INTO attendance (session_id, member_id, marked_by_trainer_id, attendance_status, marked_at)

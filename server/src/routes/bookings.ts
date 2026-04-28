@@ -1,11 +1,14 @@
 import { Router } from 'express';
-import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { requireDemoUser, requireRole } from '../auth.js';
 import { pool } from '../db.js';
 import { HttpError, asyncHandler } from '../http.js';
+import { canBookSession, getBookingResponseStatus } from '../workflowRules.js';
 
-type SessionBookingRow = { status: string; capacity: number; booked_count: number } & RowDataPacket;
+type SessionRow = { status: string; capacity: number } & RowDataPacket;
+type CountRow = { count: number } & RowDataPacket;
 type ExistingBookingRow = { booking_id: number; booking_status: string } & RowDataPacket;
+type BookingStatusRow = { booking_status: string } & RowDataPacket;
 
 function parseId(value: unknown, label: string) {
   const id = Number(value);
@@ -13,16 +16,32 @@ function parseId(value: unknown, label: string) {
   return id;
 }
 
-async function getSessionBookingState(sessionId: number) {
-  const [rows] = await pool.query<SessionBookingRow[]>(
-    `SELECT s.status, s.capacity, COUNT(b.booking_id) AS booked_count
-       FROM sessions s
-       LEFT JOIN bookings b ON b.session_id = s.session_id AND b.booking_status = 'booked'
-      WHERE s.session_id = ?
-      GROUP BY s.session_id`,
+async function memberExists(connection: PoolConnection, memberId: number) {
+  const [rows] = await connection.query<RowDataPacket[]>('SELECT member_id FROM members WHERE member_id = ? FOR UPDATE', [memberId]);
+  return rows.length > 0;
+}
+
+async function getLockedSession(connection: PoolConnection, sessionId: number) {
+  const [rows] = await connection.query<SessionRow[]>(
+    'SELECT status, capacity FROM sessions WHERE session_id = ? FOR UPDATE',
     [sessionId]
   );
+  return rows[0] ?? null;
+}
 
+async function getBookedCount(connection: PoolConnection, sessionId: number) {
+  const [rows] = await connection.query<CountRow[]>(
+    "SELECT COUNT(*) AS count FROM bookings WHERE session_id = ? AND booking_status = 'booked'",
+    [sessionId]
+  );
+  return rows[0]?.count ?? 0;
+}
+
+async function getExistingBooking(connection: PoolConnection, memberId: number, sessionId: number) {
+  const [rows] = await connection.query<ExistingBookingRow[]>(
+    'SELECT booking_id, booking_status FROM bookings WHERE member_id = ? AND session_id = ? LIMIT 1',
+    [memberId, sessionId]
+  );
   return rows[0] ?? null;
 }
 
@@ -73,33 +92,53 @@ bookingsRouter.post('/', asyncHandler(async (req, res) => {
   const memberId = user.role === 'member' ? user.member_id : parseId(req.body.member_id, 'member id');
   if (!memberId) throw new HttpError(403, 'Member profile is required');
 
-  const session = await getSessionBookingState(sessionId);
-  if (!session) throw new HttpError(404, 'Session was not found');
-  if (session.status !== 'scheduled') throw new HttpError(400, 'Session is not available for booking');
+  const connection = await pool.getConnection();
+  let committed = false;
+  try {
+    await connection.beginTransaction();
 
-  const [existingRows] = await pool.query<ExistingBookingRow[]>(
-    'SELECT booking_id, booking_status FROM bookings WHERE member_id = ? AND session_id = ? LIMIT 1',
-    [memberId, sessionId]
-  );
-  const existing = existingRows[0];
-  if (existing?.booking_status === 'booked') throw new HttpError(400, 'Member already booked this session');
-  if (session.booked_count >= session.capacity) throw new HttpError(400, 'Session is full');
+    if (!await memberExists(connection, memberId)) throw new HttpError(404, 'Member was not found');
 
-  if (existing) {
-    await pool.query<ResultSetHeader>(
-      "UPDATE bookings SET booking_status = 'booked', booking_date = CURDATE() WHERE booking_id = ?",
-      [existing.booking_id]
-    );
-    res.status(201).json({ booking: { booking_id: existing.booking_id, member_id: memberId, session_id: sessionId, booking_status: 'booked' } });
-    return;
+    const session = await getLockedSession(connection, sessionId);
+    if (!session) throw new HttpError(404, 'Session was not found');
+
+    const existing = await getExistingBooking(connection, memberId, sessionId);
+    const bookedCount = await getBookedCount(connection, sessionId);
+    const bookingDecision = canBookSession({
+      status: session.status,
+      capacity: session.capacity,
+      bookedCount,
+      existingBookingStatus: existing?.booking_status
+    });
+    if (bookingDecision !== 'ok') throw new HttpError(400, bookingDecision);
+
+    const statusCode = getBookingResponseStatus(existing);
+    const bookingId = existing?.booking_id;
+    if (existing) {
+      await connection.query<ResultSetHeader>(
+        "UPDATE bookings SET booking_status = 'booked', booking_date = CURDATE() WHERE booking_id = ?",
+        [existing.booking_id]
+      );
+    } else {
+      const [result] = await connection.query<ResultSetHeader>(
+        "INSERT INTO bookings (member_id, session_id, booking_date, booking_status) VALUES (?, ?, CURDATE(), 'booked')",
+        [memberId, sessionId]
+      );
+      await connection.commit();
+      committed = true;
+      res.status(statusCode).json({ booking: { booking_id: result.insertId, member_id: memberId, session_id: sessionId, booking_status: 'booked' } });
+      return;
+    }
+
+    await connection.commit();
+    committed = true;
+    res.status(statusCode).json({ booking: { booking_id: bookingId, member_id: memberId, session_id: sessionId, booking_status: 'booked' } });
+  } catch (error) {
+    if (!committed) await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
   }
-
-  const [result] = await pool.query<ResultSetHeader>(
-    "INSERT INTO bookings (member_id, session_id, booking_date, booking_status) VALUES (?, ?, CURDATE(), 'booked')",
-    [memberId, sessionId]
-  );
-
-  res.status(201).json({ booking: { booking_id: result.insertId, member_id: memberId, session_id: sessionId, booking_status: 'booked' } });
 }));
 
 bookingsRouter.patch('/:id/cancel', asyncHandler(async (req, res) => {
@@ -114,6 +153,14 @@ bookingsRouter.patch('/:id/cancel', asyncHandler(async (req, res) => {
     memberFilter = ' AND member_id = ?';
     params.push(user.member_id);
   }
+
+  const [bookingRows] = await pool.query<BookingStatusRow[]>(
+    `SELECT booking_status FROM bookings WHERE booking_id = ?${memberFilter} LIMIT 1`,
+    params
+  );
+  const booking = bookingRows[0];
+  if (!booking) throw new HttpError(404, 'Booking was not found');
+  if (booking.booking_status === 'cancelled') throw new HttpError(409, 'Booking is already cancelled');
 
   const [result] = await pool.query<ResultSetHeader>(
     `UPDATE bookings SET booking_status = 'cancelled' WHERE booking_id = ?${memberFilter}`,
