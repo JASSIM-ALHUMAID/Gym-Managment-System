@@ -105,6 +105,7 @@ export default function TrainerDashboard() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedSessionId) return;
+    const sessionId = selectedSessionId;
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -114,13 +115,13 @@ export default function TrainerDashboard() {
         await request('/attendance', {
           method: 'POST',
           body: JSON.stringify({
-            session_id: selectedSessionId,
+            session_id: sessionId,
             member_id: row.member_id,
             attendance_status: statusByMember[row.member_id] ?? 'present'
           })
         });
       }
-      const refreshed = await request<{ attendance: AttendanceRow[] }>(`/attendance/session/${selectedSessionId}`);
+      const refreshed = await request<{ attendance: AttendanceRow[] }>(`/attendance/session/${sessionId}`);
       setAttendance(refreshed.attendance);
       setMessage('Attendance saved.');
     } catch (err) {
@@ -148,7 +149,7 @@ export default function TrainerDashboard() {
             <p className="eyebrow">Attendance</p>
             <h2>Mark attendance</h2>
           </div>
-          <select value={selectedSessionId ?? ''} onChange={(event) => setSelectedSessionId(Number(event.target.value) || null)}>
+          <select value={selectedSessionId ?? ''} disabled={saving} onChange={(event) => setSelectedSessionId(Number(event.target.value) || null)}>
             <option value="">Select session</option>
             {sessions.map((session) => (
               <option key={session.session_id} value={session.session_id}>{session.session_type} - {session.session_date} {session.start_time}</option>
