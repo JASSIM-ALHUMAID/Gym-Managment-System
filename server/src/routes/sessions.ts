@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { requireDemoUser, requireRole } from '../auth.js';
 import { pool } from '../db.js';
 import { HttpError, asyncHandler } from '../http.js';
@@ -11,6 +12,9 @@ type SessionInput = {
   end_time: string;
   capacity: number;
 };
+
+type CountRow = { count: number } & RowDataPacket;
+type SessionBookedCountRow = { session_id: number; count: number } & RowDataPacket;
 
 const sessionStatuses = ['scheduled', 'completed', 'cancelled'] as const;
 
@@ -56,6 +60,23 @@ function parseSessionInput(body: Record<string, unknown>): SessionInput {
   };
 }
 
+async function trainerExists(trainerId: number) {
+  const [rows] = await pool.query<CountRow[]>('SELECT COUNT(*) AS count FROM trainers WHERE trainer_id = ?', [trainerId]);
+  return (rows[0]?.count ?? 0) > 0;
+}
+
+async function getBookedCount(sessionId: number) {
+  const [rows] = await pool.query<SessionBookedCountRow[]>(
+    `SELECT s.session_id, COUNT(b.booking_id) AS count
+       FROM sessions s
+       LEFT JOIN bookings b ON b.session_id = s.session_id AND b.booking_status = 'booked'
+      WHERE s.session_id = ?
+      GROUP BY s.session_id`,
+    [sessionId]
+  );
+  return rows[0]?.count ?? null;
+}
+
 export const sessionsRouter = Router();
 
 sessionsRouter.get('/', asyncHandler(async (req, res) => {
@@ -84,13 +105,14 @@ sessionsRouter.post('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
   requireRole(user, ['admin', 'staff']);
   const input = parseSessionInput(req.body);
+  if (!await trainerExists(input.trainer_id)) throw new HttpError(404, 'Trainer was not found');
 
-  await pool.query(
+  const [result] = await pool.query<ResultSetHeader>(
     'INSERT INTO sessions (trainer_id, session_type, session_date, start_time, end_time, capacity) VALUES (?, ?, ?, ?, ?, ?)',
     [input.trainer_id, input.session_type, input.session_date, input.start_time, input.end_time, input.capacity]
   );
 
-  res.status(201).json({ session: input });
+  res.status(201).json({ session: { session_id: result.insertId, ...input } });
 }));
 
 sessionsRouter.put('/:id', asyncHandler(async (req, res) => {
@@ -99,11 +121,16 @@ sessionsRouter.put('/:id', asyncHandler(async (req, res) => {
   const sessionId = Number(req.params.id);
   if (!Number.isInteger(sessionId) || sessionId <= 0) throw new HttpError(400, 'Valid session id is required');
   const input = parseSessionInput(req.body);
+  const bookedCount = await getBookedCount(sessionId);
+  if (bookedCount === null) throw new HttpError(404, 'Session was not found');
+  if (!await trainerExists(input.trainer_id)) throw new HttpError(404, 'Trainer was not found');
+  if (input.capacity < bookedCount) throw new HttpError(400, 'Capacity cannot be less than current booked count');
 
-  await pool.query(
+  const [result] = await pool.query<ResultSetHeader>(
     'UPDATE sessions SET trainer_id = ?, session_type = ?, session_date = ?, start_time = ?, end_time = ?, capacity = ? WHERE session_id = ?',
     [input.trainer_id, input.session_type, input.session_date, input.start_time, input.end_time, input.capacity, sessionId]
   );
+  if (result.affectedRows === 0) throw new HttpError(404, 'Session was not found');
 
   res.json({ session: { session_id: sessionId, ...input } });
 }));
@@ -116,6 +143,7 @@ sessionsRouter.patch('/:id/status', asyncHandler(async (req, res) => {
   const status = String(req.body.status ?? '').trim();
   if (!sessionStatuses.includes(status as typeof sessionStatuses[number])) throw new HttpError(400, 'Status must be scheduled, completed, or cancelled');
 
-  await pool.query('UPDATE sessions SET status = ? WHERE session_id = ?', [status, sessionId]);
+  const [result] = await pool.query<ResultSetHeader>('UPDATE sessions SET status = ? WHERE session_id = ?', [status, sessionId]);
+  if (result.affectedRows === 0) throw new HttpError(404, 'Session was not found');
   res.json({ session: { session_id: sessionId, status } });
 }));
