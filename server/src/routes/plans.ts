@@ -1,0 +1,84 @@
+import { Router } from 'express';
+import { requireDemoUser, requireRole } from '../auth.js';
+import { pool } from '../db.js';
+import { HttpError, asyncHandler } from '../http.js';
+
+type PlanInput = {
+  plan_name: string;
+  duration_months: number;
+  price: number;
+  description: string | null;
+};
+
+type MySqlError = Error & { code?: string; errno?: number };
+
+function parsePlanInput(body: Record<string, unknown>): PlanInput {
+  const planName = String(body.plan_name ?? '').trim();
+  const durationMonths = Number(body.duration_months);
+  const price = Number(body.price);
+  const description = body.description == null ? null : String(body.description).trim();
+
+  if (!planName) throw new HttpError(400, 'Plan name is required');
+  if (!Number.isFinite(durationMonths) || durationMonths <= 0) throw new HttpError(400, 'Duration months must be greater than 0');
+  if (!Number.isFinite(price) || price <= 0) throw new HttpError(400, 'Price must be greater than 0');
+
+  return { plan_name: planName, duration_months: durationMonths, price, description };
+}
+
+function isReferencedPlanError(error: unknown) {
+  const mysqlError = error as MySqlError;
+  return mysqlError.code === 'ER_ROW_IS_REFERENCED_2' || mysqlError.errno === 1451;
+}
+
+export const plansRouter = Router();
+
+plansRouter.get('/', asyncHandler(async (req, res) => {
+  await requireDemoUser(req);
+
+  const [rows] = await pool.query('SELECT plan_id, plan_name, duration_months, price, description FROM membership_plans ORDER BY plan_id');
+  res.json({ plans: rows });
+}));
+
+plansRouter.post('/', asyncHandler(async (req, res) => {
+  const user = await requireDemoUser(req);
+  requireRole(user, ['admin', 'staff']);
+  const input = parsePlanInput(req.body);
+
+  await pool.query(
+    'INSERT INTO membership_plans (plan_name, duration_months, price, description) VALUES (?, ?, ?, ?)',
+    [input.plan_name, input.duration_months, input.price, input.description]
+  );
+
+  res.status(201).json({ plan: input });
+}));
+
+plansRouter.put('/:id', asyncHandler(async (req, res) => {
+  const user = await requireDemoUser(req);
+  requireRole(user, ['admin', 'staff']);
+  const planId = Number(req.params.id);
+  if (!Number.isInteger(planId) || planId <= 0) throw new HttpError(400, 'Valid plan id is required');
+  const input = parsePlanInput(req.body);
+
+  await pool.query(
+    'UPDATE membership_plans SET plan_name = ?, duration_months = ?, price = ?, description = ? WHERE plan_id = ?',
+    [input.plan_name, input.duration_months, input.price, input.description, planId]
+  );
+
+  res.json({ plan: { plan_id: planId, ...input } });
+}));
+
+plansRouter.delete('/:id', asyncHandler(async (req, res) => {
+  const user = await requireDemoUser(req);
+  requireRole(user, ['admin', 'staff']);
+  const planId = Number(req.params.id);
+  if (!Number.isInteger(planId) || planId <= 0) throw new HttpError(400, 'Valid plan id is required');
+
+  try {
+    await pool.query('DELETE FROM membership_plans WHERE plan_id = ?', [planId]);
+  } catch (error) {
+    if (isReferencedPlanError(error)) throw new HttpError(409, 'Plan cannot be deleted because subscriptions reference it');
+    throw error;
+  }
+
+  res.json({ deleted: true });
+}));
