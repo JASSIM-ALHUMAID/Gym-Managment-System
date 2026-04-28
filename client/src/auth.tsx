@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { apiFetch, type DemoUser } from './api';
+import { ApiError, apiFetch, type DemoUser } from './api';
 
 const STORAGE_KEY = 'gym-demo-user';
 
@@ -11,6 +11,7 @@ type AuthContextValue = {
   user: DemoUser | null;
   login: (username: string) => Promise<DemoUser>;
   logout: () => void;
+  request: <T>(path: string, options?: RequestInit) => Promise<T>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -49,8 +50,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
+  async function request<T>(path: string, options: RequestInit = {}) {
+    try {
+      return await apiFetch<T>(path, options, user);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) setUser(null);
+      throw err;
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, request }}>
       {children}
     </AuthContext.Provider>
   );

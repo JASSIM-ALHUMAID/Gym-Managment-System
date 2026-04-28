@@ -9,14 +9,24 @@ export type DemoUser = {
   trainer_id?: number;
 };
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}, user?: DemoUser | null): Promise<T> {
   const headers = new Headers(options.headers);
-  headers.set('Content-Type', 'application/json');
+  if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   if (user) headers.set('x-demo-user-id', String(user.user_id));
 
   const response = await fetch(`/api${path}`, { ...options, headers });
   const data = await response.json().catch(() => ({}));
 
-  if (!response.ok) throw new Error(data.error ?? 'Request failed');
+  if (!response.ok) throw new ApiError(data.error ?? 'Request failed', response.status);
   return data as T;
 }

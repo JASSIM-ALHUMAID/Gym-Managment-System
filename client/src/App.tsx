@@ -3,6 +3,18 @@ import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNaviga
 import type { DemoUser } from './api';
 import { AuthProvider, useAuth } from './auth';
 
+type DashboardLink = {
+  to: string;
+  label: string;
+  roles: DemoUser['role'][];
+};
+
+const dashboardLinks: DashboardLink[] = [
+  { to: '/admin', label: 'Admin', roles: ['admin', 'staff'] },
+  { to: '/trainer', label: 'Trainer', roles: ['trainer'] },
+  { to: '/member', label: 'Member', roles: ['member'] }
+];
+
 function dashboardPathFor(user: DemoUser) {
   if (user.role === 'admin' || user.role === 'staff') return '/admin';
   if (user.role === 'trainer') return '/trainer';
@@ -69,6 +81,7 @@ function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
+  const visibleLinks = dashboardLinks.filter((link) => user && link.roles.includes(user.role));
 
   return (
     <div className="app-shell">
@@ -79,9 +92,9 @@ function Shell({ children }: { children: React.ReactNode }) {
           <p className="muted">{user?.role}</p>
         </div>
         <nav>
-          <NavLink to="/admin">Admin</NavLink>
-          <NavLink to="/trainer">Trainer</NavLink>
-          <NavLink to="/member">Member</NavLink>
+          {visibleLinks.map((link) => (
+            <NavLink key={link.to} to={link.to}>{link.label}</NavLink>
+          ))}
         </nav>
         <button className="secondary" type="button" onClick={logout}>Log out</button>
       </aside>
