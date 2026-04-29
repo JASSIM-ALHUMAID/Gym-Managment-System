@@ -44,6 +44,18 @@ async function getBookedCount(connection: PoolConnection, sessionId: number) {
   return rows[0]?.count ?? 0;
 }
 
+async function hasActiveSubscription(connection: PoolConnection, memberId: number) {
+  const [rows] = await connection.query<CountRow[]>(
+    `SELECT COUNT(*) AS count
+       FROM subscriptions
+      WHERE member_id = ?
+        AND status = 'active'
+        AND CURDATE() BETWEEN start_date AND end_date`,
+    [memberId]
+  );
+  return (rows[0]?.count ?? 0) > 0;
+}
+
 async function getExistingBooking(connection: PoolConnection, memberId: number, sessionId: number) {
   const [rows] = await connection.query<ExistingBookingRow[]>(
     'SELECT booking_id, booking_status FROM bookings WHERE member_id = ? AND session_id = ? LIMIT 1',
@@ -105,6 +117,10 @@ bookingsRouter.post('/', asyncHandler(async (req, res) => {
     await connection.beginTransaction();
 
     if (!await memberExists(connection, memberId)) throw new HttpError(404, 'Member was not found');
+
+    if (user.role === 'member' && !await hasActiveSubscription(connection, memberId)) {
+      throw new HttpError(403, 'An active subscription is required to book sessions');
+    }
 
     const session = await getLockedSession(connection, sessionId);
     if (!session) throw new HttpError(404, 'Session was not found');

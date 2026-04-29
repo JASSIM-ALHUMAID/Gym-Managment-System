@@ -26,6 +26,10 @@ type SessionRow = ResourceRow & {
   start_time: string;
   end_time: string;
   trainer_name: string;
+  trainer_specialty: string;
+  description: string | null;
+  location: string;
+  difficulty: string;
   capacity: number;
   booked_count: number;
   status: string;
@@ -171,10 +175,23 @@ export default function MemberDashboard() {
     }
   }
 
+  async function requestSubscription(planId: number) {
+    await runBookingAction(
+      () => request('/subscriptions/request', { method: 'POST', body: JSON.stringify({ plan_id: planId }) }),
+      'Subscription request submitted for staff review.',
+      'Requesting...'
+    );
+  }
+
   const activeBookingBySession = new Map(bookings.filter((booking) => booking.booking_status === 'booked').map((booking) => [booking.session_id, booking]));
+  const hasActiveSubscription = subscriptions.some((subscription) => subscription.status === 'active');
+  const hasPendingSubscription = subscriptions.some((subscription) => subscription.status === 'pending');
   const sessionColumns: ResourceColumn<SessionRow>[] = [
     { key: 'session_type', label: 'Type' },
     { key: 'trainer_name', label: 'Trainer' },
+    { key: 'trainer_specialty', label: 'Specialty' },
+    { key: 'location', label: 'Location' },
+    { key: 'difficulty', label: 'Difficulty' },
     { key: 'session_date', label: 'Date' },
     { key: 'start_time', label: 'Start' },
     { key: 'end_time', label: 'End' },
@@ -186,9 +203,9 @@ export default function MemberDashboard() {
       render: (session) => {
         const alreadyBooked = activeBookingBySession.has(session.session_id);
         const isFull = Number(session.booked_count) >= Number(session.capacity);
-        const label = alreadyBooked ? 'Booked' : isFull ? 'Full' : isActionPending ? pendingActionLabel : 'Book';
+        const label = alreadyBooked ? 'Booked' : !hasActiveSubscription ? 'Plan required' : isFull ? 'Full' : isActionPending ? pendingActionLabel : 'Book';
         return (
-          <button type="button" className="small-button" disabled={alreadyBooked || isFull || isActionPending} onClick={() => runBookingAction(() => request('/bookings', { method: 'POST', body: JSON.stringify({ session_id: session.session_id }) }), 'Session booked.', 'Booking...')}>
+          <button type="button" className="small-button" disabled={alreadyBooked || !hasActiveSubscription || isFull || isActionPending} onClick={() => runBookingAction(() => request('/bookings', { method: 'POST', body: JSON.stringify({ session_id: session.session_id }) }), 'Session booked.', 'Booking...')}>
             {label}
           </button>
         );
@@ -227,10 +244,27 @@ export default function MemberDashboard() {
       {error ? <p className="error" role="alert">{error}</p> : null}
       {message ? <p className="success" role="status">{message}</p> : null}
 
+      {!hasActiveSubscription ? (
+        <p className="empty-state">Choose a plan below and wait for staff approval before booking sessions.</p>
+      ) : null}
+
       <div className="two-column">
         <ResourceTable title="Subscriptions" rows={subscriptions} columns={subscriptionColumns} loading={loading} getRowKey={(subscription) => subscription.subscription_id} />
         <ResourceTable title="Payments" rows={payments} columns={paymentColumns} loading={loading} getRowKey={(payment) => payment.payment_id} />
       </div>
+      <section className="plan-grid" aria-label="Membership plan comparison">
+        {plans.map((plan) => (
+          <article className="plan-card" key={plan.plan_id}>
+            <p className="eyebrow">{plan.duration_months} month{plan.duration_months === 1 ? '' : 's'}</p>
+            <h2>{plan.plan_name}</h2>
+            <strong>{Number(plan.price).toFixed(2)} SAR</strong>
+            <p className="muted">{plan.description}</p>
+            <button type="button" disabled={isActionPending || hasPendingSubscription || hasActiveSubscription} onClick={() => requestSubscription(plan.plan_id)}>
+              {hasActiveSubscription ? 'Active plan' : hasPendingSubscription ? 'Request pending' : isActionPending ? pendingActionLabel : 'Request plan'}
+            </button>
+          </article>
+        ))}
+      </section>
       <ResourceTable title="Available scheduled sessions" rows={sessions} columns={sessionColumns} loading={loading} getRowKey={(session) => session.session_id} />
       <ResourceTable title="Booked sessions" rows={bookings} columns={bookingColumns} loading={loading} getRowKey={(booking) => booking.booking_id} />
       <ResourceTable title="Membership plans" rows={plans} columns={planColumns} loading={loading} getRowKey={(plan) => plan.plan_id} />

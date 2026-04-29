@@ -96,7 +96,7 @@ sessionsRouter.get('/', asyncHandler(async (req, res) => {
   const statusFilter = user.role === 'admin' || user.role === 'staff' ? '' : "WHERE s.status = 'scheduled'";
 
   const [rows] = await pool.query(`
-    SELECT s.*, u.full_name AS trainer_name, COALESCE(booked.booked_count, 0) AS booked_count
+    SELECT s.*, u.full_name AS trainer_name, t.specialty AS trainer_specialty, COALESCE(booked.booked_count, 0) AS booked_count
       FROM sessions s
       JOIN trainers t ON t.trainer_id = s.trainer_id
       JOIN users u ON u.user_id = t.user_id

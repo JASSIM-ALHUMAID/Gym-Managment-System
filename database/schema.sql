@@ -54,7 +54,7 @@ CREATE TABLE subscriptions (
     plan_id INT NOT NULL,
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
-    status ENUM('active', 'expired', 'cancelled') NOT NULL DEFAULT 'active',
+    status ENUM('pending', 'active', 'expired', 'cancelled') NOT NULL DEFAULT 'pending',
     requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     approved_by_user_id INT NULL,
     cancelled_at DATETIME NULL,
