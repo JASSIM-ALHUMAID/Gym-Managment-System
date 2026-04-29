@@ -22,7 +22,8 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -56,12 +57,18 @@ button:disabled {
 }
 
 select,
-input {
+input,
+textarea {
   background: #fff;
   border: 1px solid #cbd5e1;
   border-radius: 14px;
   color: #18212f;
   padding: 0.8rem 1rem;
+}
+
+textarea {
+  min-height: 5.5rem;
+  resize: vertical;
 }
 
 table {
@@ -318,6 +325,26 @@ td {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.admin-controls {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.control-form {
+  align-content: start;
+}
+
+.control-form h2 {
+  font-size: 1.15rem;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .attendance-form,
 .attendance-list {
   display: grid;
@@ -354,7 +381,8 @@ td {
 
 @media (max-width: 1020px) {
   .card-grid,
-  .two-column {
+  .two-column,
+  .admin-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -379,7 +407,8 @@ td {
   }
 
   .card-grid,
-  .two-column {
+  .two-column,
+  .admin-controls {
     grid-template-columns: 1fr;
   }
 

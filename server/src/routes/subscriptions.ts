@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { ResultSetHeader } from 'mysql2';
 import { requireDemoUser, requireRole } from '../auth.js';
 import { pool } from '../db.js';
 import { HttpError, asyncHandler } from '../http.js';
@@ -34,4 +35,38 @@ subscriptionsRouter.get('/', asyncHandler(async (req, res) => {
   `);
 
   res.json({ subscriptions: rows });
+}));
+
+subscriptionsRouter.patch('/:id/activate', asyncHandler(async (req, res) => {
+  const user = await requireDemoUser(req);
+  requireRole(user, ['admin', 'staff']);
+  const subscriptionId = Number(req.params.id);
+  if (!Number.isInteger(subscriptionId) || subscriptionId <= 0) throw new HttpError(400, 'Valid subscription id is required');
+
+  const [result] = await pool.query<ResultSetHeader>(
+    `UPDATE subscriptions
+        SET status = 'active', approved_by_user_id = ?, cancelled_at = NULL
+      WHERE subscription_id = ?`,
+    [user.user_id, subscriptionId]
+  );
+  if (result.affectedRows === 0) throw new HttpError(404, 'Subscription was not found');
+
+  res.json({ subscription: { subscription_id: subscriptionId, status: 'active' } });
+}));
+
+subscriptionsRouter.patch('/:id/cancel', asyncHandler(async (req, res) => {
+  const user = await requireDemoUser(req);
+  requireRole(user, ['admin', 'staff']);
+  const subscriptionId = Number(req.params.id);
+  if (!Number.isInteger(subscriptionId) || subscriptionId <= 0) throw new HttpError(400, 'Valid subscription id is required');
+
+  const [result] = await pool.query<ResultSetHeader>(
+    `UPDATE subscriptions
+        SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP
+      WHERE subscription_id = ?`,
+    [subscriptionId]
+  );
+  if (result.affectedRows === 0) throw new HttpError(404, 'Subscription was not found');
+
+  res.json({ subscription: { subscription_id: subscriptionId, status: 'cancelled' } });
 }));
