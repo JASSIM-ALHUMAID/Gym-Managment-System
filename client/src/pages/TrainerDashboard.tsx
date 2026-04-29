@@ -11,6 +11,9 @@ type SessionRow = ResourceRow & {
   end_time: string;
   capacity: number;
   booked_count: number;
+  location: string;
+  difficulty: string;
+  description: string | null;
   status: string;
 };
 
@@ -27,6 +30,8 @@ const sessionColumns: ResourceColumn<SessionRow>[] = [
   { key: 'session_date', label: 'Date' },
   { key: 'start_time', label: 'Start' },
   { key: 'end_time', label: 'End' },
+  { key: 'location', label: 'Location' },
+  { key: 'difficulty', label: 'Difficulty' },
   { key: 'booked_count', label: 'Booked' },
   { key: 'capacity', label: 'Capacity' },
   { key: 'status', label: 'Status' }
@@ -46,7 +51,9 @@ export default function TrainerDashboard() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
   const [attendance, setAttendance] = useState<AttendanceRow[]>([]);
+  const [history, setHistory] = useState<ResourceRow[]>([]);
   const [statusByMember, setStatusByMember] = useState<Record<number, string>>({});
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'completed' | 'mark' | 'history'>('upcoming');
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -74,6 +81,18 @@ export default function TrainerDashboard() {
       cancelled = true;
     };
   }, [request, user?.trainer_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    request<{ attendance: ResourceRow[] }>('/attendance/history')
+      .then((data) => {
+        if (!cancelled) setHistory(data.attendance);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [request]);
 
   useEffect(() => {
     if (!selectedSessionId) {
@@ -141,9 +160,26 @@ export default function TrainerDashboard() {
         </div>
       </section>
 
-      <ResourceTable title="Assigned sessions" rows={sessions} columns={sessionColumns} loading={sessionsLoading} error={error && !selectedSessionId ? error : null} getRowKey={(session) => session.session_id} />
+      <section className="tabs" aria-label="Trainer sections">
+        <button type="button" className={activeTab === 'upcoming' ? 'active' : ''} onClick={() => setActiveTab('upcoming')}>Upcoming</button>
+        <button type="button" className={activeTab === 'completed' ? 'active' : ''} onClick={() => setActiveTab('completed')}>Completed</button>
+        <button type="button" className={activeTab === 'mark' ? 'active' : ''} onClick={() => setActiveTab('mark')}>Mark attendance</button>
+        <button type="button" className={activeTab === 'history' ? 'active' : ''} onClick={() => setActiveTab('history')}>History</button>
+      </section>
 
-      <section className="panel">
+      {activeTab === 'upcoming' ? (
+        <ResourceTable title="Upcoming assigned sessions" rows={sessions.filter((session) => session.status === 'scheduled')} columns={sessionColumns} loading={sessionsLoading} error={error && !selectedSessionId ? error : null} getRowKey={(session) => session.session_id} />
+      ) : null}
+
+      {activeTab === 'completed' ? (
+        <ResourceTable title="Completed assigned sessions" rows={sessions.filter((session) => session.status === 'completed')} columns={sessionColumns} loading={sessionsLoading} error={error && !selectedSessionId ? error : null} getRowKey={(session) => session.session_id} />
+      ) : null}
+
+      {activeTab === 'history' ? (
+        <ResourceTable title="Attendance history" rows={history} columns={['attendance_id', 'session_type', 'member_name', 'attendance_status', 'session_date', 'location', 'difficulty', 'marked_at'].map((key) => ({ key, label: key.replace(/_/g, ' ') }))} getRowKey={(row) => Number(row.attendance_id)} />
+      ) : null}
+
+      {activeTab === 'mark' ? <section className="panel">
         <div className="section-heading">
           <div>
             <p className="eyebrow">Attendance</p>
@@ -178,7 +214,7 @@ export default function TrainerDashboard() {
             <button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save attendance'}</button>
           </form>
         ) : null}
-      </section>
+      </section> : null}
     </div>
   );
 }

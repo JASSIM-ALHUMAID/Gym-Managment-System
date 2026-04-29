@@ -33,7 +33,7 @@ attendanceRouter.get('/', asyncHandler(async (req, res) => {
   if (user.role === 'trainer') {
     if (!user.trainer_id) throw new HttpError(403, 'Trainer profile is required');
     const [rows] = await pool.query(
-      `SELECT a.*, s.session_type, s.session_date, s.start_time, member_user.full_name AS member_name
+      `SELECT a.*, s.session_type, s.session_date, s.start_time, s.location, s.difficulty, member_user.full_name AS member_name
          FROM attendance a
          JOIN sessions s ON s.session_id = a.session_id
          JOIN members m ON m.member_id = a.member_id
@@ -57,6 +57,26 @@ attendanceRouter.get('/', asyncHandler(async (req, res) => {
        JOIN trainers t ON t.trainer_id = a.marked_by_trainer_id
        JOIN users trainer_user ON trainer_user.user_id = t.user_id
       ORDER BY s.session_date DESC, s.start_time DESC, member_user.full_name`
+  );
+
+  res.json({ attendance: rows });
+}));
+
+attendanceRouter.get('/history', asyncHandler(async (req, res) => {
+  const user = await requireDemoUser(req);
+  requireRole(user, ['trainer']);
+  if (!user.trainer_id) throw new HttpError(403, 'Trainer profile is required');
+
+  const [rows] = await pool.query(
+    `SELECT a.*, s.session_type, s.session_date, s.start_time, s.end_time, s.location, s.difficulty,
+            member_user.full_name AS member_name, member_user.email AS member_email
+       FROM attendance a
+       JOIN sessions s ON s.session_id = a.session_id
+       JOIN members m ON m.member_id = a.member_id
+       JOIN users member_user ON member_user.user_id = m.user_id
+      WHERE s.trainer_id = ?
+      ORDER BY s.session_date DESC, s.start_time DESC, member_user.full_name`,
+    [user.trainer_id]
   );
 
   res.json({ attendance: rows });
