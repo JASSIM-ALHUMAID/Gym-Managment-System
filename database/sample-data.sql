@@ -1,14 +1,14 @@
 USE gym_management_system;
 
 INSERT INTO users (username, password_hash, role, full_name, email, phone, status) VALUES
-('admin1', 'hashed_admin_password', 'admin', 'Admin User', 'admin@example.com', '0500000000', 'active'),
-('staff1', 'hashed_staff_password', 'staff', 'Staff User', 'staff@example.com', '0500000001', 'active'),
-('trainer_ahmed', 'hashed_trainer_password1', 'trainer', 'Ahmed Saleh', 'ahmed.saleh@example.com', '0551111111', 'active'),
-('trainer_lina', 'hashed_trainer_password2', 'trainer', 'Lina Adel', 'lina.adel@example.com', '0552222222', 'active'),
-('member_omar', 'hashed_member_password1', 'member', 'Omar Alharbi', 'omar.alharbi@example.com', '0501111111', 'active'),
-('member_noor', 'hashed_member_password2', 'member', 'Noor Hassan', 'noor.hassan@example.com', '0502222222', 'active'),
-('member_sara', 'hashed_member_password3', 'member', 'Sara Khalid', 'sara.khalid@example.com', '0503333333', 'active'),
-('member_faisal', 'hashed_member_password4', 'member', 'Faisal Nasser', 'faisal.nasser@example.com', '0504444444', 'inactive');
+('admin1', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'admin', 'Admin User', 'admin@example.com', '0500000000', 'active'),
+('staff1', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'staff', 'Staff User', 'staff@example.com', '0500000001', 'active'),
+('trainer_ahmed', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'trainer', 'Ahmed Saleh', 'ahmed.saleh@example.com', '0551111111', 'active'),
+('trainer_lina', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'trainer', 'Lina Adel', 'lina.adel@example.com', '0552222222', 'active'),
+('member_omar', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'member', 'Omar Alharbi', 'omar.alharbi@example.com', '0501111111', 'active'),
+('member_noor', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'member', 'Noor Hassan', 'noor.hassan@example.com', '0502222222', 'active'),
+('member_sara', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'member', 'Sara Khalid', 'sara.khalid@example.com', '0503333333', 'active'),
+('member_faisal', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'member', 'Faisal Nasser', 'faisal.nasser@example.com', '0504444444', 'inactive');
 
 INSERT INTO members (user_id, gender, join_date) VALUES
 (5, 'male', '2026-01-10'),
@@ -25,12 +25,12 @@ INSERT INTO membership_plans (plan_name, duration_months, price, description) VA
 ('Quarterly Plus', 3, 550.00, 'Gym access plus group classes'),
 ('Annual Premium', 12, 1800.00, 'Full access including classes and trainer consultation');
 
-INSERT INTO subscriptions (member_id, plan_id, start_date, end_date, status) VALUES
-(1, 2, '2026-02-01', '2026-04-30', 'active'),
-(2, 1, '2026-03-01', '2026-03-31', 'expired'),
-(2, 2, '2026-04-01', '2026-06-30', 'active'),
-(3, 3, '2026-01-15', '2027-01-14', 'active'),
-(4, 1, '2026-03-02', '2026-04-01', 'cancelled');
+INSERT INTO subscriptions (member_id, plan_id, start_date, end_date, status, requested_at, approved_by_user_id, cancelled_at) VALUES
+(1, 2, '2026-02-01', '2026-04-30', 'active', '2026-01-28 10:00:00', 2, NULL),
+(2, 1, '2026-03-01', '2026-03-31', 'expired', '2026-02-27 12:30:00', 2, NULL),
+(2, 2, '2026-04-01', '2026-06-30', 'active', '2026-03-29 09:20:00', 2, NULL),
+(3, 3, '2026-01-15', '2027-01-14', 'active', '2026-01-12 14:15:00', 1, NULL),
+(4, 1, '2026-03-02', '2026-04-01', 'cancelled', '2026-03-02 08:00:00', 2, '2026-03-10 16:45:00');
 
 INSERT INTO payments (subscription_id, amount, payment_date, payment_method, payment_status) VALUES
 (1, 550.00, '2026-02-01', 'card', 'paid'),
@@ -39,12 +39,12 @@ INSERT INTO payments (subscription_id, amount, payment_date, payment_method, pay
 (4, 1800.00, '2026-01-15', 'card', 'paid'),
 (5, 200.00, '2026-03-02', 'cash', 'refunded');
 
-INSERT INTO sessions (trainer_id, session_type, session_date, start_time, end_time, capacity, status) VALUES
-(1, 'Morning Strength', '2026-04-22', '08:00:00', '09:00:00', 15, 'scheduled'),
-(2, 'Yoga Flow', '2026-04-22', '10:00:00', '11:00:00', 20, 'scheduled'),
-(1, 'Personal Training', '2026-04-22', '17:00:00', '18:00:00', 1, 'scheduled'),
-(2, 'Evening Mobility', '2026-04-23', '18:00:00', '19:00:00', 12, 'scheduled'),
-(1, 'Core and Conditioning', '2026-04-21', '19:00:00', '20:00:00', 18, 'completed');
+INSERT INTO sessions (trainer_id, session_type, description, location, difficulty, session_date, start_time, end_time, capacity, status) VALUES
+(1, 'Morning Strength', 'Compound lifting and full-body strength fundamentals', 'Strength Zone', 'intermediate', '2026-04-22', '08:00:00', '09:00:00', 15, 'scheduled'),
+(2, 'Yoga Flow', 'Breath-led mobility and flexibility class', 'Studio A', 'beginner', '2026-04-22', '10:00:00', '11:00:00', 20, 'scheduled'),
+(1, 'Personal Training', 'Focused one-on-one coaching session', 'PT Room', 'advanced', '2026-04-22', '17:00:00', '18:00:00', 1, 'scheduled'),
+(2, 'Evening Mobility', 'Recovery-focused mobility class for desk workers', 'Studio B', 'beginner', '2026-04-23', '18:00:00', '19:00:00', 12, 'scheduled'),
+(1, 'Core and Conditioning', 'Core strength and conditioning circuit', 'Main Floor', 'intermediate', '2026-04-21', '19:00:00', '20:00:00', 18, 'completed');
 
 INSERT INTO bookings (member_id, session_id, booking_date, booking_status) VALUES
 (1, 1, '2026-04-20', 'booked'),

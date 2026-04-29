@@ -19,10 +19,10 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}, user?: DemoUser | null): Promise<T> {
+export async function apiFetch<T>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
   const headers = new Headers(options.headers);
   if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-  if (user) headers.set('x-demo-user-id', String(user.user_id));
+  if (token) headers.set('Authorization', `Bearer ${token}`);
 
   const response = await fetch(`/api${path}`, { ...options, headers });
   const data = await response.json().catch(() => ({}));

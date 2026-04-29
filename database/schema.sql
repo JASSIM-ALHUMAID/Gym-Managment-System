@@ -1,4 +1,5 @@
-CREATE DATABASE IF NOT EXISTS gym_management_system;
+DROP DATABASE IF EXISTS gym_management_system;
+CREATE DATABASE gym_management_system;
 USE gym_management_system;
 
 CREATE TABLE users (
@@ -54,6 +55,9 @@ CREATE TABLE subscriptions (
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     status ENUM('active', 'expired', 'cancelled') NOT NULL DEFAULT 'active',
+    requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    approved_by_user_id INT NULL,
+    cancelled_at DATETIME NULL,
     CONSTRAINT fk_subscriptions_member
         FOREIGN KEY (member_id) REFERENCES members(member_id)
         ON DELETE CASCADE
@@ -61,6 +65,10 @@ CREATE TABLE subscriptions (
     CONSTRAINT fk_subscriptions_plan
         FOREIGN KEY (plan_id) REFERENCES membership_plans(plan_id)
         ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_subscriptions_approved_by
+        FOREIGN KEY (approved_by_user_id) REFERENCES users(user_id)
+        ON DELETE SET NULL
         ON UPDATE CASCADE,
     CONSTRAINT chk_subscriptions_dates
         CHECK (end_date >= start_date)
@@ -85,6 +93,9 @@ CREATE TABLE sessions (
     session_id INT AUTO_INCREMENT PRIMARY KEY,
     trainer_id INT NOT NULL,
     session_type VARCHAR(100) NOT NULL,
+    description TEXT,
+    location VARCHAR(100) NOT NULL DEFAULT 'Main Studio',
+    difficulty ENUM('beginner', 'intermediate', 'advanced') NOT NULL DEFAULT 'beginner',
     session_date DATE NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
