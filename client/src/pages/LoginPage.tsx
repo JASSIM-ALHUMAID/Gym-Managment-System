@@ -3,6 +3,16 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import type { DemoUser } from '../api';
 import { useAuth } from '../auth';
 
+const sampleUsers = [
+  { username: 'admin1', label: 'Admin User', role: 'Admin' },
+  { username: 'staff1', label: 'Staff User', role: 'Staff' },
+  { username: 'trainer_ahmed', label: 'Ahmed Saleh', role: 'Trainer' },
+  { username: 'trainer_lina', label: 'Lina Adel', role: 'Trainer' },
+  { username: 'member_omar', label: 'Omar Alharbi', role: 'Member' },
+  { username: 'member_noor', label: 'Noor Hassan', role: 'Member' },
+  { username: 'member_sara', label: 'Sara Khalid', role: 'Member' }
+];
+
 export function dashboardPathFor(user: DemoUser) {
   if (user.role === 'admin' || user.role === 'staff') return '/admin';
   if (user.role === 'trainer') return '/trainer';
@@ -13,6 +23,7 @@ export default function LoginPage() {
   const { user, login, register } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [sampleUser, setSampleUser] = useState('admin1');
   const [username, setUsername] = useState('admin1');
   const [password, setPassword] = useState('password123');
   const [fullName, setFullName] = useState('');
@@ -23,6 +34,13 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (user) return <Navigate to={dashboardPathFor(user)} replace />;
+
+  function chooseSampleUser(value: string) {
+    setSampleUser(value);
+    setUsername(value);
+    setPassword('password123');
+    setMode('login');
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -47,6 +65,13 @@ export default function LoginPage() {
         <p className="eyebrow">Gym Management</p>
         <h1>{mode === 'login' ? 'Sign in' : 'Create member account'}</h1>
         <p className="muted">Use a seeded account or register as a new member.</p>
+
+        <label className="quick-login" htmlFor="sampleUser">
+          <span>Quick sample login</span>
+          <select id="sampleUser" value={sampleUser} onChange={(event) => chooseSampleUser(event.target.value)}>
+            {sampleUsers.map((sample) => <option key={sample.username} value={sample.username}>{sample.label} - {sample.role}</option>)}
+          </select>
+        </label>
 
         <div className="segmented-control" role="tablist" aria-label="Authentication mode">
           <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>Login</button>

@@ -69,6 +69,7 @@ export default function AdminDashboard() {
   const [message, setMessage] = useState<string | null>(null);
   const [planForm, setPlanForm] = useState(emptyPlanForm);
   const [sessionForm, setSessionForm] = useState(emptySessionForm);
+  const [dashboardTab, setDashboardTab] = useState<'overview' | 'controls' | 'resources'>('overview');
 
   const selectedResource = baseResources.find((resource) => resource.key === selectedKey) ?? baseResources[0];
 
@@ -232,7 +233,24 @@ export default function AdminDashboard() {
       {error ? <p className="error" role="alert">{error}</p> : null}
       {message ? <p className="success" role="status">{message}</p> : null}
 
-      <section className="admin-controls">
+      <section className="tabs dashboard-tabs" aria-label="Dashboard sections">
+        <button type="button" className={dashboardTab === 'overview' ? 'active' : ''} onClick={() => setDashboardTab('overview')}>Overview</button>
+        <button type="button" className={dashboardTab === 'controls' ? 'active' : ''} onClick={() => setDashboardTab('controls')}>Controls</button>
+        <button type="button" className={dashboardTab === 'resources' ? 'active' : ''} onClick={() => setDashboardTab('resources')}>Resources</button>
+      </section>
+
+      {dashboardTab === 'overview' ? <section className="panel overview-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Today</p>
+            <h2>Operational snapshot</h2>
+          </div>
+          <span className="pill">Live data</span>
+        </div>
+        <p className="muted">Use Controls for high-impact actions, or Resources for table-level review.</p>
+      </section> : null}
+
+      {dashboardTab === 'controls' ? <section className="admin-controls">
         <form className="panel control-form" onSubmit={submitPlan}>
           <h2>Plan control</h2>
           <input placeholder="Plan ID to update (blank creates)" value={planForm.plan_id} onChange={(event) => setPlanForm((current) => ({ ...current, plan_id: event.target.value }))} />
@@ -264,9 +282,9 @@ export default function AdminDashboard() {
           <textarea placeholder="Description" value={sessionForm.description} onChange={(event) => setSessionForm((current) => ({ ...current, description: event.target.value }))} />
           <button type="submit" disabled={saving}>{sessionForm.session_id ? 'Update session' : 'Create session'}</button>
         </form>
-      </section>
+      </section> : null}
 
-      <section className="tabs" aria-label="Admin resources">
+      {dashboardTab === 'resources' ? <><section className="tabs" aria-label="Admin resources">
         {baseResources.map((resource) => (
           <button className={resource.key === selectedKey ? 'active' : ''} key={resource.key} type="button" onClick={() => setSelectedKey(resource.key)}>
             {resource.label}
@@ -274,7 +292,7 @@ export default function AdminDashboard() {
         ))}
       </section>
 
-      <ResourceTable title={selectedResource.label} rows={rows} columns={subscriptionColumns} loading={loading} error={error} />
+      <ResourceTable title={selectedResource.label} rows={rows} columns={subscriptionColumns} loading={loading} error={error} /></> : null}
     </div>
   );
 }

@@ -100,6 +100,7 @@ export default function MemberDashboard() {
   const [pendingActionLabel, setPendingActionLabel] = useState('Working...');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'sessions' | 'bookings'>('overview');
 
   async function loadMemberDashboardData(): Promise<MemberDashboardData> {
     const [subscriptionData, paymentData, sessionData, bookingData, planData] = await Promise.all([
@@ -248,11 +249,19 @@ export default function MemberDashboard() {
         <p className="empty-state">Choose a plan below and wait for staff approval before booking sessions.</p>
       ) : null}
 
-      <div className="two-column">
+      <section className="tabs dashboard-tabs" aria-label="Member dashboard sections">
+        <button type="button" className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>Overview</button>
+        <button type="button" className={activeTab === 'plans' ? 'active' : ''} onClick={() => setActiveTab('plans')}>Plans</button>
+        <button type="button" className={activeTab === 'sessions' ? 'active' : ''} onClick={() => setActiveTab('sessions')}>Sessions</button>
+        <button type="button" className={activeTab === 'bookings' ? 'active' : ''} onClick={() => setActiveTab('bookings')}>Bookings</button>
+      </section>
+
+      {activeTab === 'overview' ? <div className="two-column">
         <ResourceTable title="Subscriptions" rows={subscriptions} columns={subscriptionColumns} loading={loading} getRowKey={(subscription) => subscription.subscription_id} />
         <ResourceTable title="Payments" rows={payments} columns={paymentColumns} loading={loading} getRowKey={(payment) => payment.payment_id} />
-      </div>
-      <section className="plan-grid" aria-label="Membership plan comparison">
+      </div> : null}
+
+      {activeTab === 'plans' ? <><section className="plan-grid" aria-label="Membership plan comparison">
         {plans.map((plan) => (
           <article className="plan-card" key={plan.plan_id}>
             <p className="eyebrow">{plan.duration_months} month{plan.duration_months === 1 ? '' : 's'}</p>
@@ -265,9 +274,11 @@ export default function MemberDashboard() {
           </article>
         ))}
       </section>
-      <ResourceTable title="Available scheduled sessions" rows={sessions} columns={sessionColumns} loading={loading} getRowKey={(session) => session.session_id} />
-      <ResourceTable title="Booked sessions" rows={bookings} columns={bookingColumns} loading={loading} getRowKey={(booking) => booking.booking_id} />
-      <ResourceTable title="Membership plans" rows={plans} columns={planColumns} loading={loading} getRowKey={(plan) => plan.plan_id} />
+      <ResourceTable title="Membership plans" rows={plans} columns={planColumns} loading={loading} getRowKey={(plan) => plan.plan_id} /></> : null}
+
+      {activeTab === 'sessions' ? <ResourceTable title="Available scheduled sessions" rows={sessions} columns={sessionColumns} loading={loading} getRowKey={(session) => session.session_id} /> : null}
+
+      {activeTab === 'bookings' ? <ResourceTable title="Booked sessions" rows={bookings} columns={bookingColumns} loading={loading} getRowKey={(booking) => booking.booking_id} /> : null}
     </div>
   );
 }

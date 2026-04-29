@@ -30,22 +30,34 @@ function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?
 function Shell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const visibleLinks = dashboardLinks.filter((link) => user && link.roles.includes(user.role));
+  const initials = user?.full_name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'GM';
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div>
+      <header className="top-navbar">
+        <div className="brand-block">
           <p className="eyebrow">Gym Portal</p>
-          <h2>{user?.full_name}</h2>
-          <p className="muted">{user?.role}</p>
+          <h2>Command Center</h2>
         </div>
-        <nav>
+        <nav className="top-nav-tabs" aria-label="Primary navigation">
           {visibleLinks.map((link) => (
             <NavLink key={link.to} to={link.to}>{link.label}</NavLink>
           ))}
         </nav>
-        <button className="secondary" type="button" onClick={logout}>Log out</button>
-      </aside>
+        <div className="user-menu">
+          <div className="avatar" aria-hidden="true">{initials}</div>
+          <div className="user-meta">
+            <strong>{user?.full_name}</strong>
+            <span>{user?.role}</span>
+          </div>
+          <button className="secondary" type="button" onClick={logout}>Log out</button>
+        </div>
+      </header>
       <main className="dashboard-content">{children}</main>
     </div>
   );
