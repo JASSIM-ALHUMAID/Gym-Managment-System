@@ -10,22 +10,22 @@ Role-based web app for managing gym members, trainers, plans, subscriptions, pay
 
 ## Database Setup
 
-Create and seed the MySQL 8 database from the repository root:
+Create and seed the MySQL 8 database from the repository root. The schema resets the database, so this will delete and recreate `gym_management_system`:
 
 ```bash
-mysql -u root -p < database/schema-v2.sql
-mysql -u root -p gym_management_system_v2 < database/sample-data-v2.sql
+mysql -u root -p < database/schema.sql
+mysql -u root -p gym_management_system < database/sample-data.sql
 ```
 
 These commands work in Bash or Git Bash. On Windows PowerShell, either run them from Git Bash or import the files through the MySQL shell/client, for example:
 
 ```sql
-SOURCE database/schema-v2.sql;
-USE gym_management_system_v2;
-SOURCE database/sample-data-v2.sql;
+SOURCE database/schema.sql;
+USE gym_management_system;
+SOURCE database/sample-data.sql;
 ```
 
-The schema script creates `gym_management_system_v2`. The seed script inserts demo users, plans, members, trainers, subscriptions, payments, sessions, bookings, and attendance records. If your MySQL user is not `root`, import the same files with a user that has permission to create databases and insert data.
+The schema script creates `gym_management_system`. The seed script inserts users with real bcrypt password hashes, plans, members, trainers, subscriptions, payments, sessions, bookings, and attendance records. If your MySQL user is not `root`, import the same files with a user that has permission to create databases and insert data.
 
 ## App Setup
 
@@ -49,13 +49,17 @@ npm run build
 npm test
 ```
 
-## Demo Auth
+## Authentication
 
-This project uses demo-only authentication for local coursework review. The frontend stores the selected demo user and sends that identity to the API in the `x-demo-user-id` header. This is not production security and must not be used as real authentication or authorization outside the local demo environment.
+This project uses username/password authentication with backend-issued JWT bearer tokens. Passwords in the seed data are bcrypt hashes. The frontend stores the token in browser storage for local development convenience and clears auth state on unauthorized API responses.
 
-## Demo Users
+## Seeded Users
 
-The app uses a username-only demo login selector. No password is required for demo access.
+All seeded active users use this password:
+
+```text
+password123
+```
 
 - admin1
 - staff1
@@ -66,15 +70,17 @@ The app uses a username-only demo login selector. No password is required for de
 - member_sara
 - member_faisal
 
-`member_faisal` is seeded as inactive and is expected to be rejected by demo login.
+`member_faisal` is seeded as inactive and is expected to be rejected by login.
+
+Members can also create a new account from the Register tab on the login page.
 
 ## Demo Walkthrough
 
-After loading the database and running `npm run dev`, use the frontend demo login selector to verify the main role workflows:
+After loading the database and running `npm run dev`, use the frontend login page to verify the main role workflows:
 
-- `admin1`: view management tables for users, plans, members, trainers, subscriptions, payments, and sessions.
-- `staff1`: view operational management records.
-- `trainer_ahmed`: view assigned sessions and mark attendance.
-- `member_omar`: view available sessions and book or cancel a session.
+- `admin1`: create/update plans and sessions, activate/cancel subscriptions, and view operational tables.
+- `staff1`: use the same operational controls as admin for now.
+- `trainer_ahmed`: view upcoming/completed sessions, mark attendance, and review attendance history.
+- `member_omar`: compare plans, request a subscription, view sessions with trainer details, and book/cancel sessions when an active subscription exists.
 
 Known local verification limitation: this repository requires a local MySQL client/server for database import and full browser workflow testing. If `mysql` is not installed or credentials are unknown, the build and automated workflow tests can still be run, but end-to-end data-backed walkthroughs must be completed on a machine with MySQL configured.
