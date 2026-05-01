@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import type { DemoUser } from '../api';
 import { useAuth } from '../auth';
 
@@ -22,7 +22,9 @@ export function dashboardPathFor(user: DemoUser) {
 export default function LoginPage() {
   const { user, login, register } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [searchParams] = useSearchParams();
+  const initialMode = searchParams.get('mode') === 'register' ? 'register' : 'login';
+  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   const [sampleUser, setSampleUser] = useState('admin1');
   const [username, setUsername] = useState('admin1');
   const [password, setPassword] = useState('password123');
@@ -60,11 +62,29 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="login-page">
-      <section className="login-card wide-login-card">
-        <p className="eyebrow">Gym Management</p>
-        <h1>{mode === 'login' ? 'Sign in' : 'Create member account'}</h1>
-        <p className="muted">Use a seeded account or register as a new member.</p>
+    <main className="login-page auth-page">
+      <section className="auth-hero-panel">
+        <Link className="brand-mark" to="/">
+          <span className="brand-symbol" aria-hidden="true">IC</span>
+          <span>Iron Command Center</span>
+        </Link>
+        <div>
+          <p className="eyebrow">Controlled access</p>
+          <h1>{mode === 'login' ? 'Enter the command center.' : 'Create your member profile.'}</h1>
+          <p className="muted">Use a seeded demo user for the walkthrough, or register as a member to test the subscription and booking flow.</p>
+        </div>
+        <div className="auth-proof-grid" aria-label="System modules">
+          <span>Plans</span>
+          <span>Sessions</span>
+          <span>Bookings</span>
+          <span>Attendance</span>
+        </div>
+      </section>
+
+      <section className="login-card wide-login-card auth-card">
+        <p className="eyebrow">Authentication</p>
+        <h1>{mode === 'login' ? 'Sign in' : 'Register'}</h1>
+        <p className="muted">Seeded demo users share the password <code>password123</code>.</p>
 
         <label className="quick-login" htmlFor="sampleUser">
           <span>Quick sample login</span>
@@ -73,7 +93,7 @@ export default function LoginPage() {
           </select>
         </label>
 
-        <div className="segmented-control" role="tablist" aria-label="Authentication mode">
+        <div className="segmented-control" role="group" aria-label="Authentication mode">
           <button type="button" className={mode === 'login' ? 'active' : ''} onClick={() => setMode('login')}>Login</button>
           <button type="button" className={mode === 'register' ? 'active' : ''} onClick={() => setMode('register')}>Register</button>
         </div>
@@ -108,8 +128,6 @@ export default function LoginPage() {
           {error ? <p className="error" role="alert">{error}</p> : null}
           <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Please wait...' : mode === 'login' ? 'Sign in' : 'Create account'}</button>
         </form>
-
-        <p className="muted small-note">Seeded password for sample users: <code>password123</code></p>
       </section>
     </main>
   );

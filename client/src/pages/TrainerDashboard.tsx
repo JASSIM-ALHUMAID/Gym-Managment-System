@@ -154,9 +154,9 @@ export default function TrainerDashboard() {
     <div className="dashboard-stack">
       <section className="page-hero">
         <div>
-          <p className="eyebrow">Trainer workflow</p>
-          <h1>Sessions and attendance</h1>
-          <p className="muted">Select an assigned session, mark booked members, and save attendance.</p>
+          <p className="eyebrow">Trainer floor</p>
+          <h1>Sessions and attendance control</h1>
+          <p className="muted">Review assigned sessions, load booked members, and submit attendance without leaving your role workspace.</p>
         </div>
       </section>
 

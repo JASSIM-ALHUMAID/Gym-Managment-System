@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 're
 import type { DemoUser } from './api';
 import { AuthProvider, useAuth } from './auth';
 import AdminDashboard from './pages/AdminDashboard';
+import LandingPage from './pages/LandingPage';
 import LoginPage, { dashboardPathFor } from './pages/LoginPage';
 import MemberDashboard from './pages/MemberDashboard';
 import TrainerDashboard from './pages/TrainerDashboard';
@@ -13,9 +14,9 @@ type DashboardLink = {
 };
 
 const dashboardLinks: DashboardLink[] = [
-  { to: '/admin', label: 'Admin', roles: ['admin', 'staff'] },
-  { to: '/trainer', label: 'Trainer', roles: ['trainer'] },
-  { to: '/member', label: 'Member', roles: ['member'] }
+  { to: '/admin', label: 'Admin ops', roles: ['admin', 'staff'] },
+  { to: '/trainer', label: 'Trainer floor', roles: ['trainer'] },
+  { to: '/member', label: 'Member hub', roles: ['member'] }
 ];
 
 function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: DemoUser['role'][] }) {
@@ -35,14 +36,15 @@ function Shell({ children }: { children: React.ReactNode }) {
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
-    .join('') || 'GM';
+    .join('') || 'IC';
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <header className="top-navbar">
         <div className="brand-block">
-          <p className="eyebrow">Gym Portal</p>
-          <h2>Command Center</h2>
+          <p className="eyebrow">Iron Command</p>
+          <h2>Gym Ops</h2>
         </div>
         <nav className="top-nav-tabs" aria-label="Primary navigation">
           {visibleLinks.map((link) => (
@@ -58,22 +60,22 @@ function Shell({ children }: { children: React.ReactNode }) {
           <button className="secondary" type="button" onClick={logout}>Log out</button>
         </div>
       </header>
-      <main className="dashboard-content">{children}</main>
+      <main id="main-content" className="dashboard-content">{children}</main>
     </div>
   );
 }
 
-function HomeRedirect() {
+function HomeRoute() {
   const { user } = useAuth();
-  return <Navigate to={user ? dashboardPathFor(user) : '/login'} replace />;
+  return user ? <Navigate to={dashboardPathFor(user)} replace /> : <LandingPage />;
 }
 
 function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<HomeRoute />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<HomeRedirect />} />
         <Route path="/admin" element={
           <ProtectedRoute roles={['admin', 'staff']}>
             <Shell><AdminDashboard /></Shell>
@@ -89,7 +91,7 @@ function AppRoutes() {
             <Shell><MemberDashboard /></Shell>
           </ProtectedRoute>
         } />
-        <Route path="*" element={<HomeRedirect />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

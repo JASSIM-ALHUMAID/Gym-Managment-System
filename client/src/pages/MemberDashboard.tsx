@@ -236,9 +236,9 @@ export default function MemberDashboard() {
     <div className="dashboard-stack">
       <section className="page-hero">
         <div>
-          <p className="eyebrow">Member workflow</p>
-          <h1>Membership and sessions</h1>
-          <p className="muted">Review your plan, payments, available classes, and bookings.</p>
+          <p className="eyebrow">Member hub</p>
+          <h1>Membership and booking control</h1>
+          <p className="muted">Review your plan status, request a subscription, book sessions, and track payments.</p>
         </div>
       </section>
 
@@ -253,7 +253,7 @@ export default function MemberDashboard() {
         <button type="button" className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>Overview</button>
         <button type="button" className={activeTab === 'plans' ? 'active' : ''} onClick={() => setActiveTab('plans')}>Plans</button>
         <button type="button" className={activeTab === 'sessions' ? 'active' : ''} onClick={() => setActiveTab('sessions')}>Sessions</button>
-        <button type="button" className={activeTab === 'bookings' ? 'active' : ''} onClick={() => setActiveTab('bookings')}>Bookings</button>
+        <button type="button" className={activeTab === 'bookings' ? 'active' : ''} onClick={() => setActiveTab('bookings')}>Bookings & Payments</button>
       </section>
 
       {activeTab === 'overview' ? <div className="two-column">

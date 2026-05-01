@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth';
 import ResourceTable, { type ResourceColumn, type ResourceRow } from './ResourceTable';
 
@@ -62,6 +62,10 @@ export default function AdminDashboard() {
   const [countsError, setCountsError] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState(baseResources[0].key);
   const [rows, setRows] = useState<ResourceRow[]>([]);
+  const mountedRef = useRef(true);
+  const resourceRequestIdRef = useRef(0);
+  const dashboardRequestIdRef = useRef(0);
+  const selectedKeyRef = useRef(selectedKey);
   const [trainers, setTrainers] = useState<TrainerRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -72,24 +76,67 @@ export default function AdminDashboard() {
   const [dashboardTab, setDashboardTab] = useState<'overview' | 'controls' | 'resources'>('overview');
 
   const selectedResource = baseResources.find((resource) => resource.key === selectedKey) ?? baseResources[0];
+  selectedKeyRef.current = selectedKey;
 
-  async function loadResource(resource = selectedResource) {
-    setLoading(true);
-    setError(null);
-    const data = await request<Record<string, ResourceRow[]>>(resource.path);
-    setRows(data[resource.responseKey] ?? []);
-    setLoading(false);
+  const loadResource = useCallback(async (resource = selectedResource) => {
+    if (!mountedRef.current) return;
+    const requestId = resourceRequestIdRef.current + 1;
+    resourceRequestIdRef.current = requestId;
+    if (mountedRef.current && requestId === resourceRequestIdRef.current) setLoading(true);
+    if (mountedRef.current && requestId === resourceRequestIdRef.current) setError(null);
+    try {
+      const data = await request<Record<string, ResourceRow[]>>(resource.path);
+      if (mountedRef.current && requestId === resourceRequestIdRef.current) setRows(data[resource.responseKey] ?? []);
+    } catch (err) {
+      if (mountedRef.current && requestId === resourceRequestIdRef.current) setError(err instanceof Error ? err.message : `Failed to load ${resource.label}`);
+    } finally {
+      if (mountedRef.current && requestId === resourceRequestIdRef.current) setLoading(false);
+    }
+  }, [request, selectedResource]);
+
+  const loadDashboard = useCallback(async () => {
+    if (!mountedRef.current) return;
+    const requestId = dashboardRequestIdRef.current + 1;
+    dashboardRequestIdRef.current = requestId;
+    try {
+      const data = await request<DashboardCounts>('/dashboard');
+      if (mountedRef.current && requestId === dashboardRequestIdRef.current) {
+        setCounts(data);
+        setCountsError(null);
+      }
+    } catch (err) {
+      if (mountedRef.current && requestId === dashboardRequestIdRef.current) setCountsError(err instanceof Error ? err.message : 'Failed to load dashboard');
+    }
+  }, [request]);
+
+  async function showResource(resourceKey: string) {
+    if (!mountedRef.current) return;
+    const resource = baseResources.find((current) => current.key === resourceKey);
+    if (!resource) return;
+    setDashboardTab('resources');
+    if (selectedKeyRef.current === resourceKey) {
+      await loadResource(resource);
+    } else {
+      if (!mountedRef.current) return;
+      resourceRequestIdRef.current += 1;
+      setRows([]);
+      setLoading(true);
+      setSelectedKey(resourceKey);
+    }
   }
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      dashboardRequestIdRef.current += 1;
+      resourceRequestIdRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
-    request<DashboardCounts>('/dashboard')
-      .then((data) => {
-        if (!cancelled) setCounts(data);
-      })
-      .catch((err) => {
-        if (!cancelled) setCountsError(err instanceof Error ? err.message : 'Failed to load dashboard');
-      });
+    loadDashboard();
     request<{ trainers: TrainerRow[] }>('/trainers')
       .then((data) => {
         if (!cancelled) setTrainers(data.trainers);
@@ -97,27 +144,16 @@ export default function AdminDashboard() {
       .catch(() => undefined);
     return () => {
       cancelled = true;
+      dashboardRequestIdRef.current += 1;
     };
-  }, [request]);
+  }, [loadDashboard, request]);
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    request<Record<string, ResourceRow[]>>(selectedResource.path)
-      .then((data) => {
-        if (!cancelled) setRows(data[selectedResource.responseKey] ?? []);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : `Failed to load ${selectedResource.label}`);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    loadResource(selectedResource);
     return () => {
-      cancelled = true;
+      resourceRequestIdRef.current += 1;
     };
-  }, [request, selectedResource]);
+  }, [loadResource, selectedResource]);
 
   async function submitPlan(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -133,17 +169,22 @@ export default function AdminDashboard() {
       };
       if (planForm.plan_id) {
         await request(`/plans/${planForm.plan_id}`, { method: 'PUT', body: JSON.stringify(body) });
+        if (!mountedRef.current) return;
         setMessage('Plan updated.');
       } else {
         await request('/plans', { method: 'POST', body: JSON.stringify(body) });
+        if (!mountedRef.current) return;
         setMessage('Plan created.');
       }
+      if (!mountedRef.current) return;
       setPlanForm(emptyPlanForm);
-      await loadResource(baseResources.find((resource) => resource.key === 'plans'));
+      await loadDashboard();
+      if (!mountedRef.current) return;
+      await showResource('plans');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save plan');
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to save plan');
     } finally {
-      setSaving(false);
+      if (mountedRef.current) setSaving(false);
     }
   }
 
@@ -166,17 +207,22 @@ export default function AdminDashboard() {
       };
       if (sessionForm.session_id) {
         await request(`/sessions/${sessionForm.session_id}`, { method: 'PUT', body: JSON.stringify(body) });
+        if (!mountedRef.current) return;
         setMessage('Session updated.');
       } else {
         await request('/sessions', { method: 'POST', body: JSON.stringify(body) });
+        if (!mountedRef.current) return;
         setMessage('Session created.');
       }
+      if (!mountedRef.current) return;
       setSessionForm(emptySessionForm);
-      await loadResource(baseResources.find((resource) => resource.key === 'sessions'));
+      await loadDashboard();
+      if (!mountedRef.current) return;
+      await showResource('sessions');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save session');
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to save session');
     } finally {
-      setSaving(false);
+      if (mountedRef.current) setSaving(false);
     }
   }
 
@@ -186,12 +232,15 @@ export default function AdminDashboard() {
     setMessage(null);
     try {
       await request(`/subscriptions/${subscriptionId}/${action}`, { method: 'PATCH' });
+      if (!mountedRef.current) return;
       setMessage(action === 'activate' ? 'Subscription activated.' : 'Subscription cancelled.');
-      await loadResource(baseResources.find((resource) => resource.key === 'subscriptions'));
+      await loadDashboard();
+      if (!mountedRef.current) return;
+      await showResource('subscriptions');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update subscription');
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to update subscription');
     } finally {
-      setSaving(false);
+      if (mountedRef.current) setSaving(false);
     }
   }
 
@@ -215,9 +264,9 @@ export default function AdminDashboard() {
     <div className="dashboard-stack">
       <section className="page-hero">
         <div>
-          <p className="eyebrow">{user?.role === 'staff' ? 'Staff' : 'Admin'} operations</p>
-          <h1>Gym operations console</h1>
-          <p className="muted">Manage plans, sessions, subscriptions, and daily workflow health.</p>
+          <p className="eyebrow">{user?.role === 'staff' ? 'Staff command' : 'Admin command'}</p>
+          <h1>Operations command center</h1>
+          <p className="muted">Control plans, sessions, subscriptions, and the resource grid from one role-protected workspace.</p>
         </div>
       </section>
 
@@ -253,40 +302,55 @@ export default function AdminDashboard() {
       {dashboardTab === 'controls' ? <section className="admin-controls">
         <form className="panel control-form" onSubmit={submitPlan}>
           <h2>Plan control</h2>
-          <input placeholder="Plan ID to update (blank creates)" value={planForm.plan_id} onChange={(event) => setPlanForm((current) => ({ ...current, plan_id: event.target.value }))} />
-          <input placeholder="Plan name" value={planForm.plan_name} onChange={(event) => setPlanForm((current) => ({ ...current, plan_name: event.target.value }))} />
-          <input placeholder="Duration months" type="number" min="1" value={planForm.duration_months} onChange={(event) => setPlanForm((current) => ({ ...current, duration_months: event.target.value }))} />
-          <input placeholder="Price" type="number" min="1" step="0.01" value={planForm.price} onChange={(event) => setPlanForm((current) => ({ ...current, price: event.target.value }))} />
-          <textarea placeholder="Description" value={planForm.description} onChange={(event) => setPlanForm((current) => ({ ...current, description: event.target.value }))} />
+          <label htmlFor="planId">Plan ID to update</label>
+          <input id="planId" placeholder="Leave blank to create" value={planForm.plan_id} onChange={(event) => setPlanForm((current) => ({ ...current, plan_id: event.target.value }))} />
+          <label htmlFor="planName">Plan name</label>
+          <input id="planName" value={planForm.plan_name} onChange={(event) => setPlanForm((current) => ({ ...current, plan_name: event.target.value }))} />
+          <label htmlFor="planDuration">Duration months</label>
+          <input id="planDuration" type="number" min="1" value={planForm.duration_months} onChange={(event) => setPlanForm((current) => ({ ...current, duration_months: event.target.value }))} />
+          <label htmlFor="planPrice">Price</label>
+          <input id="planPrice" type="number" min="1" step="0.01" value={planForm.price} onChange={(event) => setPlanForm((current) => ({ ...current, price: event.target.value }))} />
+          <label htmlFor="planDescription">Description</label>
+          <textarea id="planDescription" value={planForm.description} onChange={(event) => setPlanForm((current) => ({ ...current, description: event.target.value }))} />
           <button type="submit" disabled={saving}>{planForm.plan_id ? 'Update plan' : 'Create plan'}</button>
         </form>
 
         <form className="panel control-form" onSubmit={submitSession}>
           <h2>Session control</h2>
-          <input placeholder="Session ID to update (blank creates)" value={sessionForm.session_id} onChange={(event) => setSessionForm((current) => ({ ...current, session_id: event.target.value }))} />
-          <select value={sessionForm.trainer_id} onChange={(event) => setSessionForm((current) => ({ ...current, trainer_id: event.target.value }))}>
+          <label htmlFor="sessionId">Session ID to update</label>
+          <input id="sessionId" placeholder="Leave blank to create" value={sessionForm.session_id} onChange={(event) => setSessionForm((current) => ({ ...current, session_id: event.target.value }))} />
+          <label htmlFor="sessionTrainer">Trainer</label>
+          <select id="sessionTrainer" value={sessionForm.trainer_id} onChange={(event) => setSessionForm((current) => ({ ...current, trainer_id: event.target.value }))}>
             <option value="">Choose trainer</option>
             {trainers.map((trainer) => <option key={trainer.trainer_id} value={trainer.trainer_id}>{trainer.full_name}</option>)}
           </select>
-          <input placeholder="Session type" value={sessionForm.session_type} onChange={(event) => setSessionForm((current) => ({ ...current, session_type: event.target.value }))} />
-          <input placeholder="Location" value={sessionForm.location} onChange={(event) => setSessionForm((current) => ({ ...current, location: event.target.value }))} />
-          <select value={sessionForm.difficulty} onChange={(event) => setSessionForm((current) => ({ ...current, difficulty: event.target.value }))}>
+          <label htmlFor="sessionType">Session type</label>
+          <input id="sessionType" value={sessionForm.session_type} onChange={(event) => setSessionForm((current) => ({ ...current, session_type: event.target.value }))} />
+          <label htmlFor="sessionLocation">Location</label>
+          <input id="sessionLocation" value={sessionForm.location} onChange={(event) => setSessionForm((current) => ({ ...current, location: event.target.value }))} />
+          <label htmlFor="sessionDifficulty">Difficulty</label>
+          <select id="sessionDifficulty" value={sessionForm.difficulty} onChange={(event) => setSessionForm((current) => ({ ...current, difficulty: event.target.value }))}>
             <option value="beginner">Beginner</option>
             <option value="intermediate">Intermediate</option>
             <option value="advanced">Advanced</option>
           </select>
-          <input type="date" value={sessionForm.session_date} onChange={(event) => setSessionForm((current) => ({ ...current, session_date: event.target.value }))} />
-          <input type="time" value={sessionForm.start_time} onChange={(event) => setSessionForm((current) => ({ ...current, start_time: event.target.value }))} />
-          <input type="time" value={sessionForm.end_time} onChange={(event) => setSessionForm((current) => ({ ...current, end_time: event.target.value }))} />
-          <input placeholder="Capacity" type="number" min="1" value={sessionForm.capacity} onChange={(event) => setSessionForm((current) => ({ ...current, capacity: event.target.value }))} />
-          <textarea placeholder="Description" value={sessionForm.description} onChange={(event) => setSessionForm((current) => ({ ...current, description: event.target.value }))} />
+          <label htmlFor="sessionDate">Date</label>
+          <input id="sessionDate" type="date" value={sessionForm.session_date} onChange={(event) => setSessionForm((current) => ({ ...current, session_date: event.target.value }))} />
+          <label htmlFor="sessionStart">Start time</label>
+          <input id="sessionStart" type="time" value={sessionForm.start_time} onChange={(event) => setSessionForm((current) => ({ ...current, start_time: event.target.value }))} />
+          <label htmlFor="sessionEnd">End time</label>
+          <input id="sessionEnd" type="time" value={sessionForm.end_time} onChange={(event) => setSessionForm((current) => ({ ...current, end_time: event.target.value }))} />
+          <label htmlFor="sessionCapacity">Capacity</label>
+          <input id="sessionCapacity" type="number" min="1" value={sessionForm.capacity} onChange={(event) => setSessionForm((current) => ({ ...current, capacity: event.target.value }))} />
+          <label htmlFor="sessionDescription">Description</label>
+          <textarea id="sessionDescription" value={sessionForm.description} onChange={(event) => setSessionForm((current) => ({ ...current, description: event.target.value }))} />
           <button type="submit" disabled={saving}>{sessionForm.session_id ? 'Update session' : 'Create session'}</button>
         </form>
       </section> : null}
 
       {dashboardTab === 'resources' ? <><section className="tabs" aria-label="Admin resources">
         {baseResources.map((resource) => (
-          <button className={resource.key === selectedKey ? 'active' : ''} key={resource.key} type="button" onClick={() => setSelectedKey(resource.key)}>
+          <button className={resource.key === selectedKey ? 'active' : ''} key={resource.key} type="button" onClick={() => void showResource(resource.key)}>
             {resource.label}
           </button>
         ))}
