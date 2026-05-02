@@ -90,6 +90,29 @@ describe('real auth routes', () => {
     expect(response.body).toEqual({ error: 'Invalid username or password' });
   });
 
+  it('does not treat a numeric username as a user id during login', async () => {
+    const passwordHash = await bcrypt.hash('password123', 10);
+    const userById = {
+      user_id: 1,
+      username: 'admin1',
+      password_hash: passwordHash,
+      role: 'admin',
+      full_name: 'Admin User',
+      email: 'admin@example.com',
+      status: 'active',
+      member_id: null,
+      trainer_id: null
+    };
+    mocks.pool.query.mockImplementationOnce(async (_sql: string, params?: unknown[]) => [params?.length === 1 ? [] : [userById]]);
+
+    const response = await request(createApp())
+      .post('/api/auth/login')
+      .send({ username: '1', password: 'password123' });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: 'Invalid username or password' });
+  });
+
   it('registers members with a hashed password and member profile', async () => {
     mocks.pool.query.mockResolvedValueOnce([[]]);
     mocks.connection.query

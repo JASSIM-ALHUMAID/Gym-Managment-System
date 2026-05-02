@@ -43,23 +43,33 @@ function publicUser(user: UserRow): DemoUser {
   };
 }
 
-export async function findDemoUser(usernameOrId: string) {
+export async function findDemoUser(username: string) {
   const [rows] = await pool.query<UserRow[]>(
     `SELECT u.user_id, u.username, u.password_hash, u.role, u.full_name, u.email, u.status,
             m.member_id, t.trainer_id
        FROM users u
        LEFT JOIN members m ON m.user_id = u.user_id
        LEFT JOIN trainers t ON t.user_id = u.user_id
-      WHERE u.username = ? OR u.user_id = ?
+      WHERE u.username = ?
       LIMIT 1`,
-    [usernameOrId, Number(usernameOrId) || 0]
+    [username]
   );
 
   return rows[0] ?? null;
 }
 
 export async function findPublicUserById(userId: number) {
-  const user = await findDemoUser(String(userId));
+  const [rows] = await pool.query<UserRow[]>(
+    `SELECT u.user_id, u.username, u.password_hash, u.role, u.full_name, u.email, u.status,
+            m.member_id, t.trainer_id
+       FROM users u
+       LEFT JOIN members m ON m.user_id = u.user_id
+       LEFT JOIN trainers t ON t.user_id = u.user_id
+      WHERE u.user_id = ?
+      LIMIT 1`,
+    [userId]
+  );
+  const user = rows[0] ?? null;
   return user ? publicUser(user) : null;
 }
 
