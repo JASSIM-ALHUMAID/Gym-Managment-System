@@ -198,6 +198,7 @@ export default function MemberDashboard() {
   }
 
   async function requestSubscription(planId: number) {
+    if (pendingPlanIds.size > 0 || hasPendingSubscription) return;
     await runMemberAction(
       () => request('/subscriptions/request', { method: 'POST', body: JSON.stringify({ plan_id: planId }) }),
       'Request created. Staff will review it soon.',
@@ -233,6 +234,7 @@ export default function MemberDashboard() {
   const latestPayment = payments[0];
   const hasActiveSubscription = subscriptions.some((subscription) => subscription.status === 'active');
   const hasPendingSubscription = subscriptions.some((subscription) => subscription.status === 'pending');
+  const isPlanRequestPending = pendingPlanIds.size > 0;
   const sessionColumns: ResourceColumn<SessionRow>[] = [
     { key: 'session_type', label: 'Type' },
     { key: 'trainer_name', label: 'Trainer' },
@@ -335,7 +337,7 @@ export default function MemberDashboard() {
             <ul className="plan-features">
               {planFeatures(plan).map((feature) => <li key={feature}>{feature}</li>)}
             </ul>
-            <button type="button" disabled={pendingPlanIds.has(plan.plan_id) || hasPendingSubscription || isCurrentPlan(plan)} onClick={() => requestSubscription(plan.plan_id)}>
+            <button type="button" disabled={isPlanRequestPending || hasPendingSubscription || isCurrentPlan(plan)} onClick={() => requestSubscription(plan.plan_id)}>
               {pendingPlanIds.has(plan.plan_id) ? 'Creating request...' : planButtonLabel(plan)}
             </button>
           </article>
