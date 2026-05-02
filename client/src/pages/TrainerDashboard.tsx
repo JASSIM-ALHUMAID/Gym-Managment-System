@@ -196,7 +196,7 @@ export default function TrainerDashboard() {
             <p className="eyebrow">Attendance</p>
             <h2>Mark attendance</h2>
           </div>
-          <select value={selectedSessionId ?? ''} disabled={saving} onChange={(event) => setSelectedSessionId(Number(event.target.value) || null)}>
+          <select aria-label="Select session to mark attendance" value={selectedSessionId ?? ''} disabled={saving} onChange={(event) => setSelectedSessionId(Number(event.target.value) || null)}>
             <option value="">Select session</option>
             {sessions.map((session) => (
               <option key={session.session_id} value={session.session_id}>{session.session_type} - {session.session_date} {session.start_time}</option>
