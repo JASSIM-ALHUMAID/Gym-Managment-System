@@ -10,6 +10,10 @@ function validatePassword(password: string) {
   if (password.length < 8) throw new HttpError(400, 'Password must be at least 8 characters');
 }
 
+function isDuplicateKeyError(error: unknown) {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ER_DUP_ENTRY';
+}
+
 authRouter.post('/login', asyncHandler(async (req, res) => {
   const username = String(req.body.username ?? '').trim();
   const password = String(req.body.password ?? '');
@@ -69,6 +73,7 @@ authRouter.post('/register', asyncHandler(async (req, res) => {
     res.status(201).json({ token: signAuthToken(user), user });
   } catch (error) {
     await connection.rollback();
+    if (isDuplicateKeyError(error)) throw new HttpError(409, 'Username or email is already taken');
     throw error;
   } finally {
     connection.release();

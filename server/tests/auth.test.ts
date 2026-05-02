@@ -139,6 +139,26 @@ describe('real auth routes', () => {
     expect(mocks.connection.commit).toHaveBeenCalledOnce();
   });
 
+  it('returns a conflict when registration hits a duplicate database key', async () => {
+    mocks.pool.query.mockResolvedValueOnce([[]]);
+    mocks.connection.query.mockRejectedValueOnce(Object.assign(new Error('Duplicate entry'), { code: 'ER_DUP_ENTRY' }));
+
+    const response = await request(createApp())
+      .post('/api/auth/register')
+      .send({
+        username: 'new_member',
+        password: 'password123',
+        full_name: 'New Member',
+        email: 'new@example.com',
+        phone: '0509999999',
+        gender: 'other'
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: 'Username or email is already taken' });
+    expect(mocks.connection.rollback).toHaveBeenCalledOnce();
+  });
+
   it('returns the current user for a valid bearer token', async () => {
     const token = jwt.sign({ user_id: 6 }, 'test-secret');
     mocks.pool.query.mockResolvedValueOnce([[{
