@@ -1,30 +1,30 @@
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Fira+Code:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  color: #f8fafc;
-  background: #050608;
+  color: #f7f7f8;
+  background: #030303;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
-  --bg: #050608;
-  --bg-2: #09090b;
-  --surface: #0f1115;
-  --surface-2: #151821;
-  --panel: rgba(15, 17, 21, 0.9);
-  --panel-strong: rgba(9, 9, 11, 0.96);
-  --border: rgba(148, 163, 184, 0.2);
-  --border-strong: rgba(220, 38, 38, 0.42);
-  --text: #f8fafc;
-  --text-soft: #e2e8f0;
-  --muted: #a1a1aa;
-  --muted-2: #71717a;
-  --primary: #dc2626;
-  --primary-2: #ef4444;
-  --primary-dark: #7f1d1d;
+  --bg: #030303;
+  --bg-2: #070808;
+  --surface: #101212;
+  --surface-2: #171717;
+  --panel: rgba(16, 18, 18, 0.96);
+  --panel-strong: rgba(3, 3, 3, 0.98);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 0, 0, 0.62);
+  --text: #f7f7f8;
+  --text-soft: #d6d8dc;
+  --muted: #8d9098;
+  --muted-2: #5d6068;
+  --primary: #ff0808;
+  --primary-2: #ff2a2a;
+  --primary-dark: #7a0000;
   --success: #22c55e;
   --danger: #ef4444;
   --warning: #f59e0b;
-  --shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
-  --red-glow: 0 0 32px rgba(220, 38, 38, 0.24);
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.62);
+  --red-glow: 0 0 28px rgba(255, 0, 0, 0.2);
 }
 
 * { box-sizing: border-box; }
@@ -49,9 +49,11 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 12% 8%, rgba(220, 38, 38, 0.2), transparent 25rem),
-    radial-gradient(circle at 86% 0%, rgba(239, 68, 68, 0.12), transparent 24rem),
-    linear-gradient(135deg, #050608 0%, #09090b 46%, #0f1115 100%);
+    radial-gradient(circle at 50% -20%, rgba(255, 0, 0, 0.14), transparent 28rem),
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(135deg, #030303 0%, #090a0a 48%, #111313 100%);
+  background-size: auto, 28px 28px, 28px 28px, auto;
 }
 
 a {
@@ -1228,6 +1230,324 @@ p { margin: 0; }
 
 .danger:hover:not(:disabled) { box-shadow: 0 14px 34px rgba(239, 68, 68, 0.3); }
 
+/* Iron Command theme overrides: hard-edged tactical console styling. */
+button,
+.button-link,
+.ghost-link {
+  border-color: rgba(255, 0, 0, 0.72);
+  border-radius: 0;
+  background: var(--primary);
+  box-shadow: none;
+  font-family: "Fira Code", Inter, sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.09em;
+  min-height: 42px;
+  text-transform: uppercase;
+}
+
+button:hover:not(:disabled),
+.button-link:hover,
+.ghost-link:hover {
+  background: #d90000;
+  border-color: #ff4d4d;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16), var(--red-glow);
+  transform: none;
+}
+
+.secondary,
+.ghost-link {
+  background: #111;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--text-soft);
+}
+
+.secondary:hover:not(:disabled),
+.ghost-link:hover {
+  background: rgba(255, 0, 0, 0.14);
+  border-color: var(--primary);
+}
+
+select,
+input,
+textarea {
+  background: #050505;
+  border-color: rgba(255, 255, 255, 0.13);
+  border-radius: 0;
+  font-family: "Fira Code", Inter, sans-serif;
+  font-size: 0.9rem;
+}
+
+select:hover,
+input:hover,
+textarea:hover,
+select:focus,
+input:focus,
+textarea:focus {
+  background: #080808;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.14);
+}
+
+th,
+td {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  font-family: "Fira Code", Inter, sans-serif;
+  font-size: 0.78rem;
+}
+
+th {
+  background: #1a1a1a;
+  color: #a1a1aa;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+}
+
+td { color: #f0f0f2; }
+
+.error,
+.success,
+.empty-state {
+  border-radius: 0;
+  font-family: "Fira Code", Inter, sans-serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+.landing-page::before,
+.auth-page::before,
+.app-shell::before {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+  background-size: 16px 16px;
+  mask-image: linear-gradient(to bottom, #000, transparent 86%);
+}
+
+.landing-nav,
+.top-navbar {
+  backdrop-filter: none;
+  background: #030303;
+  border-color: rgba(255, 255, 255, 0.12);
+  border-radius: 0;
+  box-shadow: inset 0 -1px 0 rgba(255, 0, 0, 0.2);
+}
+
+.landing-nav { top: 0; }
+
+.brand-mark,
+.brand-block h2 {
+  color: #ff3434;
+  font-style: italic;
+  letter-spacing: -0.05em;
+}
+
+.brand-mark {
+  border-radius: 0;
+  padding: 0.25rem 0.45rem 0.25rem 0;
+}
+
+.brand-symbol,
+.avatar {
+  background: #080808;
+  border-color: var(--primary);
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--primary);
+}
+
+.eyebrow,
+.console-header span,
+.console-grid span,
+.role-card span,
+.metric-card span,
+.workspace-summary-card span,
+.request-details dt,
+.user-meta span {
+  font-family: "Fira Code", Inter, sans-serif;
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.eyebrow { color: var(--muted); }
+
+.hero-console,
+.auth-hero-panel,
+.auth-card,
+.page-hero,
+.panel,
+.metric-card,
+.plan-card,
+.role-card,
+.feature-card,
+.workflow-panel,
+.status-card,
+.request-card,
+.workspace-summary-card,
+.dialog-panel,
+.inline-field,
+.quick-login,
+.auth-proof-grid span {
+  background: linear-gradient(180deg, rgba(18, 20, 20, 0.98), rgba(10, 11, 11, 0.98));
+  border-color: rgba(255, 255, 255, 0.09);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.hero-console,
+.page-hero,
+.auth-hero-panel,
+.panel,
+.metric-card,
+.plan-card,
+.status-card {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65);
+}
+
+.hero-console::before,
+.page-hero::before,
+.auth-hero-panel::before {
+  background: var(--primary);
+  inset: 0 auto auto 0;
+  width: 96px;
+}
+
+.page-hero::after {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 1;
+}
+
+.hero-copy h1,
+.landing-section h2,
+.section-heading h2,
+.auth-hero-panel h1,
+.login-card h1,
+.page-hero h1 {
+  letter-spacing: -0.06em;
+  text-shadow: none;
+}
+
+.hero-lede,
+.role-card p,
+.feature-card p,
+.muted { color: #a7a9af; }
+
+.console-header {
+  background: #050505;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.console-header strong { color: var(--primary); }
+
+.console-grid article,
+.workflow-list li,
+.request-details div {
+  background: #0a0a0a;
+  border-color: rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+}
+
+.console-grid strong,
+.workspace-summary-card strong,
+.metric-card strong,
+.plan-card strong {
+  letter-spacing: -0.06em;
+}
+
+.role-card:hover,
+.feature-card:hover,
+.plan-card:hover {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px rgba(255, 0, 0, 0.35);
+  transform: none;
+}
+
+.workflow-list li::before,
+.plan-features li::before {
+  background: var(--primary);
+  border-color: var(--primary);
+  border-radius: 0;
+  color: #fff;
+}
+
+.top-navbar {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  position: sticky;
+  top: 0;
+}
+
+.top-nav-tabs a,
+.tabs button {
+  border-radius: 0;
+  font-family: "Fira Code", Inter, sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.top-nav-tabs a.active,
+.top-nav-tabs a:hover,
+.tabs button.active,
+.tabs button:hover:not(:disabled) {
+  background: rgba(255, 0, 0, 0.13);
+  border-color: var(--primary);
+  box-shadow: none;
+  color: var(--primary);
+}
+
+.dashboard-content {
+  background: #111313;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  min-height: calc(100vh - 70px);
+  padding-top: clamp(1.2rem, 3vw, 2.3rem);
+}
+
+.page-hero,
+.panel { padding: clamp(1rem, 3vw, 1.75rem); }
+
+.metric-card::before,
+.plan-card::before {
+  background: var(--primary);
+  height: 1px;
+}
+
+.metric-card:has(strong:nth-child(2)) { border-color: rgba(255, 0, 0, 0.2); }
+
+.dashboard-tabs,
+.segmented-control {
+  background: #050505;
+  border-radius: 0;
+}
+
+.segmented-control button.active,
+.segmented-control button:hover:not(:disabled) {
+  background: var(--primary);
+}
+
+.pill {
+  background: transparent;
+  border-color: rgba(255, 0, 0, 0.7);
+  border-radius: 0;
+  color: #ff3a3a;
+  font-family: "Fira Code", Inter, sans-serif;
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.table-wrapper {
+  background: #0d0e0e;
+  border-radius: 0;
+}
+
+.table-wrapper table tr:hover td { background: rgba(255, 0, 0, 0.08); }
+
+.dialog-backdrop { background: rgba(0, 0, 0, 0.82); }
+
+.danger { background: #8f0000; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1336,4 +1656,25 @@ p { margin: 0; }
   .brand-symbol { height: 38px; width: 38px; }
   .tabs { grid-template-columns: 1fr; }
   .console-grid strong { font-size: 3.2rem; }
+}
+
+@media (max-width: 760px) {
+  .landing-nav,
+  .top-navbar,
+  .hero-console,
+  .auth-hero-panel,
+  .login-card,
+  .page-hero,
+  .panel,
+  .workflow-panel,
+  .dashboard-tabs {
+    border-radius: 0;
+  }
+
+  .top-navbar {
+    margin: 0;
+    position: static;
+  }
+
+  .dashboard-content { padding-top: 1rem; }
 }
