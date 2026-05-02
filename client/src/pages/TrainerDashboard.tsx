@@ -114,7 +114,7 @@ export default function TrainerDashboard() {
         if (cancelled) return;
         const assignedSessions = data.sessions.filter((session) => !user?.trainer_id || session.trainer_id === user.trainer_id);
         setSessions(assignedSessions);
-        setSelectedSessionId((current) => current ?? assignedSessions[0]?.session_id ?? null);
+        setSelectedSessionId((current) => assignedSessions.some((session) => session.session_id === current) ? current : assignedSessions[0]?.session_id ?? null);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load sessions');
@@ -189,6 +189,7 @@ export default function TrainerDashboard() {
     setSaving(true);
     setError(null);
     setMessage(null);
+    let savedCount = 0;
 
     try {
       for (const row of attendance) {
@@ -200,13 +201,23 @@ export default function TrainerDashboard() {
             attendance_status: statusByMember[row.member_id] ?? 'present'
           })
         });
+        savedCount += 1;
       }
       const refreshed = await request<{ attendance: AttendanceRow[] }>(`/attendance/session/${sessionId}`);
       setAttendance(refreshed.attendance);
       await loadHistory();
       setMessage('Attendance saved.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save attendance');
+      const failureMessage = err instanceof Error ? err.message : 'Failed to save attendance';
+      setError(savedCount > 0 ? `Saved ${savedCount} of ${attendance.length} records. ${failureMessage}` : failureMessage);
+      if (savedCount > 0) {
+        try {
+          const refreshed = await request<{ attendance: AttendanceRow[] }>(`/attendance/session/${sessionId}`);
+          setAttendance(refreshed.attendance);
+        } catch {
+          // Keep the partial-save message visible if the refresh also fails.
+        }
+      }
     } finally {
       setSaving(false);
     }
@@ -247,7 +258,7 @@ export default function TrainerDashboard() {
             <p className="eyebrow">Attendance</p>
             <h2>Mark attendance</h2>
           </div>
-          <select value={selectedSessionId ?? ''} disabled={saving} onChange={(event) => setSelectedSessionId(Number(event.target.value) || null)}>
+          <select aria-label="Select session to mark attendance" value={selectedSessionId ?? ''} disabled={saving} onChange={(event) => setSelectedSessionId(Number(event.target.value) || null)}>
             <option value="">Select session</option>
             {sessions.map((session) => (
               <option key={session.session_id} value={session.session_id}>{formatSessionLabel(session)}</option>

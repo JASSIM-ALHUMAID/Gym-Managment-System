@@ -20,6 +20,10 @@ function toSqlDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+function isDuplicateKeyError(error: unknown) {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ER_DUP_ENTRY';
+}
+
 subscriptionsRouter.get('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
 
@@ -76,11 +80,17 @@ subscriptionsRouter.post('/request', asyncHandler(async (req, res) => {
 
     const startDate = new Date();
     const endDate = addMonths(startDate, plan.duration_months);
-    const [result] = await connection.query<ResultSetHeader>(
-      `INSERT INTO subscriptions (member_id, plan_id, start_date, end_date, status)
-       VALUES (?, ?, ?, ?, 'pending')`,
-      [user.member_id, planId, toSqlDate(startDate), toSqlDate(endDate)]
-    );
+    let result: ResultSetHeader;
+    try {
+      [result] = await connection.query<ResultSetHeader>(
+        `INSERT INTO subscriptions (member_id, plan_id, start_date, end_date, status)
+         VALUES (?, ?, ?, ?, 'pending')`,
+        [user.member_id, planId, toSqlDate(startDate), toSqlDate(endDate)]
+      );
+    } catch (error) {
+      if (isDuplicateKeyError(error)) throw new HttpError(409, 'You already have a pending subscription request');
+      throw error;
+    }
 
     await connection.commit();
     res.status(201).json({

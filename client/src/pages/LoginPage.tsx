@@ -26,8 +26,8 @@ export default function LoginPage() {
   const initialMode = searchParams.get('mode') === 'register' ? 'register' : 'login';
   const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   const [sampleUser, setSampleUser] = useState('admin1');
-  const [username, setUsername] = useState('admin1');
-  const [password, setPassword] = useState('password123');
+  const [username, setUsername] = useState(initialMode === 'register' ? '' : 'admin1');
+  const [password, setPassword] = useState(initialMode === 'register' ? '' : 'password123');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');

@@ -79,6 +79,14 @@ function statusLabel(value: unknown) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function parsePositiveNumber(value: string, label: string, options: { integer?: boolean } = {}) {
+  const number = Number(value);
+  if (!value.trim() || !Number.isFinite(number) || number <= 0 || (options.integer && !Number.isInteger(number))) {
+    throw new Error(`${label} must be a positive ${options.integer ? 'whole number' : 'number'}`);
+  }
+  return number;
+}
+
 const baseResources: ResourceConfig[] = [
   { key: 'users', label: 'Users', path: '/users', responseKey: 'users', columns: ['user_id', 'username', 'role', 'full_name', 'email', 'status'].map((key) => ({ key, label: labelFor(key) })) },
   { key: 'members', label: 'Members', path: '/members', responseKey: 'members', columns: [
@@ -344,10 +352,12 @@ export default function AdminDashboard() {
     setError(null);
     setMessage(null);
     try {
+      const durationMonths = parsePositiveNumber(planForm.duration_months, 'Duration months', { integer: true });
+      const price = parsePositiveNumber(planForm.price, 'Price');
       const body = {
         plan_name: planForm.plan_name,
-        duration_months: Number(planForm.duration_months),
-        price: Number(planForm.price),
+        duration_months: durationMonths,
+        price,
         description: planForm.description
       };
       if (planForm.plan_id) {
@@ -379,8 +389,10 @@ export default function AdminDashboard() {
     setError(null);
     setMessage(null);
     try {
+      const trainerId = parsePositiveNumber(sessionForm.trainer_id, 'Trainer', { integer: true });
+      const capacity = parsePositiveNumber(sessionForm.capacity, 'Capacity', { integer: true });
       const body = {
-        trainer_id: Number(sessionForm.trainer_id),
+        trainer_id: trainerId,
         session_type: sessionForm.session_type,
         description: sessionForm.description,
         location: sessionForm.location,
@@ -388,7 +400,7 @@ export default function AdminDashboard() {
         session_date: sessionForm.session_date,
         start_time: sessionForm.start_time,
         end_time: sessionForm.end_time,
-        capacity: Number(sessionForm.capacity)
+        capacity
       };
       if (sessionForm.session_id) {
         await request(`/sessions/${sessionForm.session_id}`, { method: 'PUT', body: JSON.stringify(body) });
@@ -609,11 +621,11 @@ export default function AdminDashboard() {
             <label htmlFor="planId">Plan ID to update</label>
             <input id="planId" placeholder="Leave blank to create" value={planForm.plan_id} onChange={(event) => setPlanForm((current) => ({ ...current, plan_id: event.target.value }))} />
             <label htmlFor="planName">Plan name</label>
-            <input id="planName" value={planForm.plan_name} onChange={(event) => setPlanForm((current) => ({ ...current, plan_name: event.target.value }))} />
+            <input id="planName" value={planForm.plan_name} onChange={(event) => setPlanForm((current) => ({ ...current, plan_name: event.target.value }))} required />
             <label htmlFor="planDuration">Duration months</label>
-            <input id="planDuration" type="number" min="1" value={planForm.duration_months} onChange={(event) => setPlanForm((current) => ({ ...current, duration_months: event.target.value }))} />
+            <input id="planDuration" type="number" min="1" value={planForm.duration_months} onChange={(event) => setPlanForm((current) => ({ ...current, duration_months: event.target.value }))} required />
             <label htmlFor="planPrice">Price</label>
-            <input id="planPrice" type="number" min="1" step="0.01" value={planForm.price} onChange={(event) => setPlanForm((current) => ({ ...current, price: event.target.value }))} />
+            <input id="planPrice" type="number" min="1" step="0.01" value={planForm.price} onChange={(event) => setPlanForm((current) => ({ ...current, price: event.target.value }))} required />
             <label htmlFor="planDescription">Description</label>
             <textarea id="planDescription" value={planForm.description} onChange={(event) => setPlanForm((current) => ({ ...current, description: event.target.value }))} />
             <button type="submit" disabled={saving}>{planForm.plan_id ? 'Update plan' : 'Create plan'}</button>
@@ -623,14 +635,14 @@ export default function AdminDashboard() {
             <label htmlFor="sessionId">Session ID to update</label>
             <input id="sessionId" placeholder="Leave blank to create" value={sessionForm.session_id} onChange={(event) => setSessionForm((current) => ({ ...current, session_id: event.target.value }))} />
             <label htmlFor="sessionTrainer">Trainer</label>
-            <select id="sessionTrainer" value={sessionForm.trainer_id} onChange={(event) => setSessionForm((current) => ({ ...current, trainer_id: event.target.value }))}>
+            <select id="sessionTrainer" value={sessionForm.trainer_id} onChange={(event) => setSessionForm((current) => ({ ...current, trainer_id: event.target.value }))} required>
               <option value="">Choose trainer</option>
               {trainers.map((trainer) => <option key={trainer.trainer_id} value={trainer.trainer_id}>{trainer.full_name}</option>)}
             </select>
             <label htmlFor="sessionType">Session type</label>
-            <input id="sessionType" value={sessionForm.session_type} onChange={(event) => setSessionForm((current) => ({ ...current, session_type: event.target.value }))} />
+            <input id="sessionType" value={sessionForm.session_type} onChange={(event) => setSessionForm((current) => ({ ...current, session_type: event.target.value }))} required />
             <label htmlFor="sessionLocation">Location</label>
-            <input id="sessionLocation" value={sessionForm.location} onChange={(event) => setSessionForm((current) => ({ ...current, location: event.target.value }))} />
+            <input id="sessionLocation" value={sessionForm.location} onChange={(event) => setSessionForm((current) => ({ ...current, location: event.target.value }))} required />
             <label htmlFor="sessionDifficulty">Difficulty</label>
             <select id="sessionDifficulty" value={sessionForm.difficulty} onChange={(event) => setSessionForm((current) => ({ ...current, difficulty: event.target.value }))}>
               <option value="beginner">Beginner</option>
@@ -638,13 +650,13 @@ export default function AdminDashboard() {
               <option value="advanced">Advanced</option>
             </select>
             <label htmlFor="sessionDate">Date</label>
-            <input id="sessionDate" type="date" value={sessionForm.session_date} onChange={(event) => setSessionForm((current) => ({ ...current, session_date: event.target.value }))} />
+            <input id="sessionDate" type="date" value={sessionForm.session_date} onChange={(event) => setSessionForm((current) => ({ ...current, session_date: event.target.value }))} required />
             <label htmlFor="sessionStart">Start time</label>
-            <input id="sessionStart" type="time" value={sessionForm.start_time} onChange={(event) => setSessionForm((current) => ({ ...current, start_time: event.target.value }))} />
+            <input id="sessionStart" type="time" value={sessionForm.start_time} onChange={(event) => setSessionForm((current) => ({ ...current, start_time: event.target.value }))} required />
             <label htmlFor="sessionEnd">End time</label>
-            <input id="sessionEnd" type="time" value={sessionForm.end_time} onChange={(event) => setSessionForm((current) => ({ ...current, end_time: event.target.value }))} />
+            <input id="sessionEnd" type="time" value={sessionForm.end_time} onChange={(event) => setSessionForm((current) => ({ ...current, end_time: event.target.value }))} required />
             <label htmlFor="sessionCapacity">Capacity</label>
-            <input id="sessionCapacity" type="number" min="1" value={sessionForm.capacity} onChange={(event) => setSessionForm((current) => ({ ...current, capacity: event.target.value }))} />
+            <input id="sessionCapacity" type="number" min="1" value={sessionForm.capacity} onChange={(event) => setSessionForm((current) => ({ ...current, capacity: event.target.value }))} required />
             <label htmlFor="sessionDescription">Description</label>
             <textarea id="sessionDescription" value={sessionForm.description} onChange={(event) => setSessionForm((current) => ({ ...current, description: event.target.value }))} />
             <button type="submit" disabled={saving}>{sessionForm.session_id ? 'Update session' : 'Create session'}</button>

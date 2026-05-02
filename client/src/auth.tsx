@@ -32,13 +32,14 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<StoredAuth | null>(() => {
-    const storedAuth = localStorage.getItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
+    const storedAuth = sessionStorage.getItem(STORAGE_KEY);
     if (!storedAuth) return null;
 
     try {
       return JSON.parse(storedAuth) as StoredAuth;
     } catch {
-      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(STORAGE_KEY);
       return null;
     }
   });
@@ -46,10 +47,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const token = auth?.token ?? null;
 
   useEffect(() => {
+    localStorage.removeItem(STORAGE_KEY);
     if (auth) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(auth));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(auth));
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(STORAGE_KEY);
     }
   }, [auth]);
 

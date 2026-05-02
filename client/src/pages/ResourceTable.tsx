@@ -46,6 +46,7 @@ export default function ResourceTable<Row extends ResourceRow>({ title, rows, co
       {!loading && !error && rows.length > 0 ? (
         <div className="table-wrapper">
           <table>
+            <caption className="sr-only">{title}</caption>
             <thead>
               <tr>
                 {columns.map((column) => <th key={String(column.key)}>{column.label}</th>)}
