@@ -39,6 +39,7 @@ function createApp() {
 
 describe('real auth routes', () => {
   beforeEach(() => {
+    process.env.NODE_ENV = 'test';
     process.env.JWT_SECRET = 'test-secret';
     vi.clearAllMocks();
   });
@@ -134,5 +135,29 @@ describe('real auth routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.user).toMatchObject({ username: 'member_noor', member_id: 2 });
+  });
+
+  it('does not sign login tokens with the fallback secret in production', async () => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.JWT_SECRET;
+    const passwordHash = await bcrypt.hash('password123', 10);
+    mocks.pool.query.mockResolvedValueOnce([[{
+      user_id: 1,
+      username: 'admin1',
+      password_hash: passwordHash,
+      role: 'admin',
+      full_name: 'Admin User',
+      email: 'admin@example.com',
+      status: 'active',
+      member_id: null,
+      trainer_id: null
+    }]]);
+
+    const response = await request(createApp())
+      .post('/api/auth/login')
+      .send({ username: 'admin1', password: 'password123' });
+
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ error: 'Unexpected server error' });
   });
 });

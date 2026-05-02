@@ -11,7 +11,11 @@ type UserRow = DemoUser & { password_hash?: string } & RowDataPacket;
 const JWT_EXPIRES_IN = '8h';
 
 function jwtSecret() {
-  return process.env.JWT_SECRET ?? 'local-dev-secret-change-me';
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test') {
+    throw new Error('JWT_SECRET must be configured');
+  }
+  return 'local-dev-secret-change-me';
 }
 
 export function signAuthToken(user: Pick<DemoUser, 'user_id' | 'role'>) {
