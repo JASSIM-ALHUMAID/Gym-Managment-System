@@ -65,8 +65,8 @@ export default function LoginPage() {
     <main className="login-page auth-page">
       <section className="login-card wide-login-card auth-card">
         <Link className="brand-mark auth-card-brand" to="/">
-          <span className="brand-symbol" aria-hidden="true">IC</span>
-          <span>Iron Command Center</span>
+          <span className="brand-symbol" aria-hidden="true">GMS</span>
+          <span>Gym Management System</span>
         </Link>
         <p className="eyebrow">Authentication</p>
         <h1>{mode === 'login' ? 'Sign in' : 'Register'}</h1>

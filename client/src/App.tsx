@@ -43,8 +43,8 @@ function Shell({ children }: { children: React.ReactNode }) {
       <a className="skip-link" href="#main-content">Skip to main content</a>
       <header className="top-navbar">
         <div className="brand-block">
-          <p className="eyebrow">Iron Command</p>
-          <h2>Gym Ops</h2>
+          <p className="eyebrow">Gym Management</p>
+          <h2>System</h2>
         </div>
         <nav className="top-nav-tabs" aria-label="Primary navigation">
           {visibleLinks.map((link) => (

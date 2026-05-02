@@ -20,8 +20,8 @@ export default function LandingPage() {
     <main className="landing-page">
       <nav className="landing-nav" aria-label="Public navigation">
         <Link className="brand-mark" to="/">
-          <span className="brand-symbol" aria-hidden="true">IC</span>
-          <span>Iron Command Center</span>
+          <span className="brand-symbol" aria-hidden="true">GMS</span>
+          <span>Gym Management System</span>
         </Link>
         <div className="landing-nav-actions">
           <Link className="text-link" to="/login">Sign in</Link>
@@ -35,7 +35,7 @@ export default function LandingPage() {
           <h1>Run memberships, sessions, bookings, and attendance from one command system.</h1>
           <p className="hero-lede">A role-based gym management portal built for admins, trainers, and members who need clear workflows instead of spreadsheet chaos.</p>
           <div className="hero-actions">
-            <Link className="button-link" to="/login">Enter command center</Link>
+            <Link className="button-link" to="/login">Enter system</Link>
             <Link className="ghost-link" to="/login?mode=register">Create member account</Link>
           </div>
         </div>
