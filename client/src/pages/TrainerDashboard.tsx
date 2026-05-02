@@ -69,7 +69,7 @@ export default function TrainerDashboard() {
         if (cancelled) return;
         const assignedSessions = data.sessions.filter((session) => !user?.trainer_id || session.trainer_id === user.trainer_id);
         setSessions(assignedSessions);
-        setSelectedSessionId((current) => current ?? assignedSessions[0]?.session_id ?? null);
+        setSelectedSessionId((current) => assignedSessions.some((session) => session.session_id === current) ? current : assignedSessions[0]?.session_id ?? null);
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load sessions');
