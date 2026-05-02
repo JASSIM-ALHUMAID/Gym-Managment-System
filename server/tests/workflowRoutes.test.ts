@@ -34,6 +34,7 @@ const { attendanceRouter } = await import('../src/routes/attendance.js');
 const { dashboardRouter } = await import('../src/routes/dashboard.js');
 const { paymentsRouter } = await import('../src/routes/payments.js');
 const { subscriptionsRouter } = await import('../src/routes/subscriptions.js');
+const { trainersRouter } = await import('../src/routes/trainers.js');
 
 function createApp() {
   const app = express();
@@ -43,6 +44,7 @@ function createApp() {
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/payments', paymentsRouter);
   app.use('/api/subscriptions', subscriptionsRouter);
+  app.use('/api/trainers', trainersRouter);
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     sendError(error, res);
   });
@@ -123,6 +125,27 @@ describe('workflow route handlers', () => {
     expect(response.status).toBe(403);
     expect(response.body).toEqual({ error: 'Member profile is required' });
     expect(mocks.pool.query).not.toHaveBeenCalled();
+  });
+
+  it('omits trainer contact fields for member users', async () => {
+    mocks.requireDemoUser.mockResolvedValueOnce({ user_id: 2, username: 'member', role: 'member', full_name: 'Member', email: null, status: 'active', member_id: 1 });
+    mocks.pool.query.mockResolvedValueOnce([[{
+      trainer_id: 1,
+      specialty: 'Strength',
+      hire_date: '2026-01-01',
+      user_id: 3,
+      full_name: 'Ahmed Trainer',
+      email: 'trainer@example.com',
+      phone: '0501234567',
+      status: 'active'
+    }]]);
+
+    const response = await request(createApp()).get('/api/trainers');
+
+    expect(response.status).toBe(200);
+    expect(response.body.trainers[0]).toMatchObject({ trainer_id: 1, full_name: 'Ahmed Trainer', specialty: 'Strength' });
+    expect(response.body.trainers[0].email).toBeUndefined();
+    expect(response.body.trainers[0].phone).toBeUndefined();
   });
 
   it('uses the assigned session trainer when attendance submits another trainer', async () => {
