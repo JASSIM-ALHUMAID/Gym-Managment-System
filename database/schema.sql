@@ -55,6 +55,7 @@ CREATE TABLE subscriptions (
     start_date DATE NOT NULL,
     end_date DATE NOT NULL,
     status ENUM('pending', 'active', 'expired', 'cancelled') NOT NULL DEFAULT 'pending',
+    pending_member_id INT GENERATED ALWAYS AS (CASE WHEN status = 'pending' THEN member_id ELSE NULL END) STORED,
     requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     approved_by_user_id INT NULL,
     cancelled_at DATETIME NULL,
@@ -71,7 +72,9 @@ CREATE TABLE subscriptions (
         ON DELETE SET NULL
         ON UPDATE CASCADE,
     CONSTRAINT chk_subscriptions_dates
-        CHECK (end_date >= start_date)
+        CHECK (end_date >= start_date),
+    CONSTRAINT uq_subscriptions_pending_member
+        UNIQUE (pending_member_id)
 );
 
 CREATE TABLE payments (

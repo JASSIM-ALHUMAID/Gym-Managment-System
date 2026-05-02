@@ -64,6 +64,19 @@ describe('member subscription and booking workflows', () => {
     expect(mocks.pool.query).toHaveBeenLastCalledWith(expect.stringContaining("'pending'"), [1, 2, expect.any(String), expect.any(String)]);
   });
 
+  it('returns a conflict when a pending subscription already exists at insert time', async () => {
+    mocks.pool.query
+      .mockResolvedValueOnce([[{ plan_id: 2, duration_months: 3 }]])
+      .mockRejectedValueOnce(Object.assign(new Error('Duplicate entry'), { code: 'ER_DUP_ENTRY' }));
+
+    const response = await request(createApp())
+      .post('/api/subscriptions/request')
+      .send({ plan_id: 2 });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: 'You already have a pending subscription request' });
+  });
+
   it('rejects member bookings without an active subscription', async () => {
     mocks.connection.query
       .mockResolvedValueOnce([[{ member_id: 1 }]])
