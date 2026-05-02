@@ -5,7 +5,7 @@ import { pool } from '../db.js';
 import { HttpError, asyncHandler } from '../http.js';
 import { canBookSession, getBookingResponseStatus } from '../workflowRules.js';
 
-type SessionRow = { status: string; capacity: number } & RowDataPacket;
+type SessionRow = { status: string; capacity: number; session_type: string } & RowDataPacket;
 type CountRow = { count: number } & RowDataPacket;
 type ExistingBookingRow = { booking_id: number; booking_status: string } & RowDataPacket;
 type BookingStatusRow = { booking_status: string } & RowDataPacket;
@@ -30,7 +30,7 @@ async function memberExists(connection: PoolConnection, memberId: number) {
 
 async function getLockedSession(connection: PoolConnection, sessionId: number) {
   const [rows] = await connection.query<SessionRow[]>(
-    'SELECT status, capacity FROM sessions WHERE session_id = ? FOR UPDATE',
+    'SELECT status, capacity, session_type FROM sessions WHERE session_id = ? FOR UPDATE',
     [sessionId]
   );
   return rows[0] ?? null;
@@ -44,16 +44,27 @@ async function getBookedCount(connection: PoolConnection, sessionId: number) {
   return rows[0]?.count ?? 0;
 }
 
-async function hasActiveSubscription(connection: PoolConnection, memberId: number) {
-  const [rows] = await connection.query<CountRow[]>(
-    `SELECT COUNT(*) AS count
-       FROM subscriptions
-      WHERE member_id = ?
-        AND status = 'active'
-        AND CURDATE() BETWEEN start_date AND end_date`,
+async function getActivePlanName(connection: PoolConnection, memberId: number) {
+  const [rows] = await connection.query<({ plan_name: string } & RowDataPacket)[]>(
+    `SELECT p.plan_name
+       FROM subscriptions s
+       JOIN membership_plans p ON p.plan_id = s.plan_id
+      WHERE s.member_id = ?
+        AND s.status = 'active'
+        AND CURDATE() BETWEEN s.start_date AND s.end_date
+      ORDER BY s.start_date DESC
+      LIMIT 1`,
     [memberId]
   );
-  return (rows[0]?.count ?? 0) > 0;
+  return rows[0]?.plan_name ?? null;
+}
+
+function planIncludesSession(planName: string, sessionType: string) {
+  const plan = planName.toLowerCase();
+  const session = sessionType.toLowerCase();
+  if (plan.includes('premium')) return true;
+  if (plan.includes('plus')) return !session.includes('personal');
+  return false;
 }
 
 async function getExistingBooking(connection: PoolConnection, memberId: number, sessionId: number) {
@@ -118,12 +129,14 @@ bookingsRouter.post('/', asyncHandler(async (req, res) => {
 
     if (!await memberExists(connection, memberId)) throw new HttpError(404, 'Member was not found');
 
-    if (user.role === 'member' && !await hasActiveSubscription(connection, memberId)) {
-      throw new HttpError(403, 'An active subscription is required to book sessions');
-    }
+    const activePlanName = user.role === 'member' ? await getActivePlanName(connection, memberId) : null;
+    if (user.role === 'member' && !activePlanName) throw new HttpError(403, 'An active subscription is required to book sessions');
 
     const session = await getLockedSession(connection, sessionId);
     if (!session) throw new HttpError(404, 'Session was not found');
+    if (user.role === 'member' && activePlanName && !planIncludesSession(activePlanName, session.session_type)) {
+      throw new HttpError(403, 'Your current plan does not include this session');
+    }
 
     const existing = await getExistingBooking(connection, memberId, sessionId);
     const bookedCount = await getBookedCount(connection, sessionId);

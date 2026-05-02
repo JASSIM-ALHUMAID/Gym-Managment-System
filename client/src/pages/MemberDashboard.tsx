@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../auth';
 import ResourceTable, { type ResourceColumn, type ResourceRow } from './ResourceTable';
 
@@ -41,6 +41,7 @@ type BookingRow = ResourceRow & {
   session_type: string;
   session_date: string;
   start_time: string;
+  end_time: string;
   trainer_name: string;
   booking_status: string;
 };
@@ -61,11 +62,33 @@ type MemberDashboardData = {
   plans: PlanRow[];
 };
 
+function formatDate(value: unknown) {
+  if (typeof value !== 'string' || value.length === 0) return '-';
+  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.000)?Z)?$/);
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(Number(year), Number(month) - 1, Number(day)));
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+}
+
+function formatTime(value: unknown) {
+  if (typeof value !== 'string' || value.length === 0) return '-';
+  const [hourText, minuteText] = value.split(':');
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return value;
+  const date = new Date(2000, 0, 1, hour, minute);
+  return new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit' }).format(date);
+}
+
 const subscriptionColumns: ResourceColumn<SubscriptionRow>[] = [
   { key: 'subscription_id', label: 'ID' },
   { key: 'plan_name', label: 'Plan' },
-  { key: 'start_date', label: 'Start' },
-  { key: 'end_date', label: 'End' },
+  { key: 'start_date', label: 'Start', format: formatDate },
+  { key: 'end_date', label: 'End', format: formatDate },
   { key: 'status', label: 'Status' },
   { key: 'price', label: 'Price' }
 ];
@@ -74,30 +97,22 @@ const paymentColumns: ResourceColumn<PaymentRow>[] = [
   { key: 'payment_id', label: 'ID' },
   { key: 'plan_name', label: 'Plan' },
   { key: 'amount', label: 'Amount' },
-  { key: 'payment_date', label: 'Date' },
+  { key: 'payment_date', label: 'Date', format: formatDate },
   { key: 'payment_status', label: 'Status' }
-];
-
-const planColumns: ResourceColumn<PlanRow>[] = [
-  { key: 'plan_id', label: 'ID' },
-  { key: 'plan_name', label: 'Plan' },
-  { key: 'duration_months', label: 'Months' },
-  { key: 'price', label: 'Price' },
-  { key: 'description', label: 'Description' }
 ];
 
 export default function MemberDashboard() {
   const { request } = useAuth();
   const mountedRef = useRef(true);
-  const actionPendingRef = useRef(false);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isActionPending, setIsActionPending] = useState(false);
-  const [pendingActionLabel, setPendingActionLabel] = useState('Working...');
+  const [pendingPlanIds, setPendingPlanIds] = useState<Set<number>>(() => new Set());
+  const [pendingSessionIds, setPendingSessionIds] = useState<Set<number>>(() => new Set());
+  const [pendingBookingIds, setPendingBookingIds] = useState<Set<number>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'plans' | 'sessions' | 'bookings'>('overview');
@@ -157,11 +172,12 @@ export default function MemberDashboard() {
     if (mountedRef.current) applyMemberDashboardData(data);
   }
 
-  async function runBookingAction(action: () => Promise<unknown>, successMessage: string, pendingLabel: string) {
-    if (actionPendingRef.current) return;
-    actionPendingRef.current = true;
-    setIsActionPending(true);
-    setPendingActionLabel(pendingLabel);
+  async function runMemberAction(action: () => Promise<unknown>, successMessage: string, setPending: Dispatch<SetStateAction<Set<number>>>, pendingId: number) {
+    setPending((current) => {
+      const next = new Set(current);
+      next.add(pendingId);
+      return next;
+    });
     setError(null);
     setMessage(null);
     try {
@@ -169,22 +185,52 @@ export default function MemberDashboard() {
       await refreshAllSafely();
       if (mountedRef.current) setMessage(successMessage);
     } catch (err) {
-      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Booking action failed');
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Action failed');
     } finally {
-      actionPendingRef.current = false;
-      if (mountedRef.current) setIsActionPending(false);
+      if (mountedRef.current) {
+        setPending((current) => {
+          const next = new Set(current);
+          next.delete(pendingId);
+          return next;
+        });
+      }
     }
   }
 
   async function requestSubscription(planId: number) {
-    await runBookingAction(
+    await runMemberAction(
       () => request('/subscriptions/request', { method: 'POST', body: JSON.stringify({ plan_id: planId }) }),
-      'Subscription request submitted for staff review.',
-      'Requesting...'
+      'Request created. Staff will review it soon.',
+      setPendingPlanIds,
+      planId
     );
   }
 
+  function planFeatures(plan: PlanRow) {
+    const name = plan.plan_name.toLowerCase();
+    if (name.includes('premium')) return ['Includes Basic access', 'Includes Plus group classes', 'Trainer consultation'];
+    if (name.includes('plus')) return ['Includes Basic access', 'Group classes'];
+    return ['Gym facilities during standard hours'];
+  }
+
+  function planButtonLabel(plan: PlanRow) {
+    const activePlan = subscriptions.find((subscription) => subscription.status === 'active');
+    const pendingPlan = subscriptions.find((subscription) => subscription.status === 'pending');
+    if (activePlan?.plan_name === plan.plan_name) return 'Current plan';
+    if (pendingPlan?.plan_name === plan.plan_name) return `Request made for ${plan.plan_name}`;
+    if (pendingPlan) return `Request already made for ${pendingPlan.plan_name}`;
+    if (activePlan) return 'Request upgrade';
+    return 'Request plan';
+  }
+
+  function isCurrentPlan(plan: PlanRow) {
+    return subscriptions.some((subscription) => subscription.status === 'active' && subscription.plan_name === plan.plan_name);
+  }
+
   const activeBookingBySession = new Map(bookings.filter((booking) => booking.booking_status === 'booked').map((booking) => [booking.session_id, booking]));
+  const activeSubscription = subscriptions.find((subscription) => subscription.status === 'active');
+  const pendingSubscription = subscriptions.find((subscription) => subscription.status === 'pending');
+  const latestPayment = payments[0];
   const hasActiveSubscription = subscriptions.some((subscription) => subscription.status === 'active');
   const hasPendingSubscription = subscriptions.some((subscription) => subscription.status === 'pending');
   const sessionColumns: ResourceColumn<SessionRow>[] = [
@@ -193,9 +239,9 @@ export default function MemberDashboard() {
     { key: 'trainer_specialty', label: 'Specialty' },
     { key: 'location', label: 'Location' },
     { key: 'difficulty', label: 'Difficulty' },
-    { key: 'session_date', label: 'Date' },
-    { key: 'start_time', label: 'Start' },
-    { key: 'end_time', label: 'End' },
+    { key: 'session_date', label: 'Date', format: formatDate },
+    { key: 'start_time', label: 'Start', format: formatTime },
+    { key: 'end_time', label: 'End', format: formatTime },
     { key: 'booked_count', label: 'Booked' },
     { key: 'capacity', label: 'Capacity' },
     {
@@ -204,9 +250,10 @@ export default function MemberDashboard() {
       render: (session) => {
         const alreadyBooked = activeBookingBySession.has(session.session_id);
         const isFull = Number(session.booked_count) >= Number(session.capacity);
-        const label = alreadyBooked ? 'Booked' : !hasActiveSubscription ? 'Plan required' : isFull ? 'Full' : isActionPending ? pendingActionLabel : 'Book';
+        const isBooking = pendingSessionIds.has(session.session_id);
+        const label = alreadyBooked ? 'Booked' : !hasActiveSubscription ? 'Plan required' : isFull ? 'Full' : isBooking ? 'Booking...' : 'Book';
         return (
-          <button type="button" className="small-button" disabled={alreadyBooked || !hasActiveSubscription || isFull || isActionPending} onClick={() => runBookingAction(() => request('/bookings', { method: 'POST', body: JSON.stringify({ session_id: session.session_id }) }), 'Session booked.', 'Booking...')}>
+          <button type="button" className="small-button" disabled={alreadyBooked || !hasActiveSubscription || isFull || isBooking} onClick={() => runMemberAction(() => request('/bookings', { method: 'POST', body: JSON.stringify({ session_id: session.session_id }) }), 'Session booked.', setPendingSessionIds, session.session_id)}>
             {label}
           </button>
         );
@@ -218,15 +265,16 @@ export default function MemberDashboard() {
     { key: 'booking_id', label: 'ID' },
     { key: 'session_type', label: 'Type' },
     { key: 'trainer_name', label: 'Trainer' },
-    { key: 'session_date', label: 'Date' },
-    { key: 'start_time', label: 'Start' },
+    { key: 'session_date', label: 'Date', format: formatDate },
+    { key: 'start_time', label: 'Start', format: formatTime },
+    { key: 'end_time', label: 'End', format: formatTime },
     { key: 'booking_status', label: 'Status' },
     {
       key: 'action',
       label: 'Action',
       render: (booking) => booking.booking_status === 'booked' ? (
-        <button type="button" className="small-button danger" disabled={isActionPending} onClick={() => runBookingAction(() => request(`/bookings/${booking.booking_id}/cancel`, { method: 'PATCH' }), 'Booking cancelled.', 'Cancelling...')}>
-          {isActionPending ? pendingActionLabel : 'Cancel'}
+        <button type="button" className="small-button danger" disabled={pendingBookingIds.has(booking.booking_id)} onClick={() => runMemberAction(() => request(`/bookings/${booking.booking_id}/cancel`, { method: 'PATCH' }), 'Booking cancelled.', setPendingBookingIds, booking.booking_id)}>
+          {pendingBookingIds.has(booking.booking_id) ? 'Cancelling...' : 'Cancel'}
         </button>
       ) : '-'
     }
@@ -250,16 +298,32 @@ export default function MemberDashboard() {
       ) : null}
 
       <section className="tabs dashboard-tabs" aria-label="Member dashboard sections">
-        <button type="button" className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>Overview</button>
-        <button type="button" className={activeTab === 'plans' ? 'active' : ''} onClick={() => setActiveTab('plans')}>Plans</button>
-        <button type="button" className={activeTab === 'sessions' ? 'active' : ''} onClick={() => setActiveTab('sessions')}>Sessions</button>
-        <button type="button" className={activeTab === 'bookings' ? 'active' : ''} onClick={() => setActiveTab('bookings')}>Bookings & Payments</button>
+        <button type="button" className={activeTab === 'overview' ? 'active' : ''} aria-pressed={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>Overview</button>
+        <button type="button" className={activeTab === 'plans' ? 'active' : ''} aria-pressed={activeTab === 'plans'} onClick={() => setActiveTab('plans')}>Plans</button>
+        <button type="button" className={activeTab === 'sessions' ? 'active' : ''} aria-pressed={activeTab === 'sessions'} onClick={() => setActiveTab('sessions')}>Sessions</button>
+        <button type="button" className={activeTab === 'bookings' ? 'active' : ''} aria-pressed={activeTab === 'bookings'} onClick={() => setActiveTab('bookings')}>Bookings</button>
       </section>
 
-      {activeTab === 'overview' ? <div className="two-column">
-        <ResourceTable title="Subscriptions" rows={subscriptions} columns={subscriptionColumns} loading={loading} getRowKey={(subscription) => subscription.subscription_id} />
-        <ResourceTable title="Payments" rows={payments} columns={paymentColumns} loading={loading} getRowKey={(payment) => payment.payment_id} />
-      </div> : null}
+      {activeTab === 'overview' ? <section className="status-card-grid" aria-label="Membership status summary">
+        <article className="status-card">
+          <p className="eyebrow">Current active plan</p>
+          <h2>{activeSubscription ? activeSubscription.plan_name : 'No active plan'}</h2>
+          <p className="muted">{activeSubscription ? `${formatDate(activeSubscription.start_date)} to ${formatDate(activeSubscription.end_date)}` : 'Choose a plan and wait for staff approval.'}</p>
+          <span className="pill">{activeSubscription ? activeSubscription.status : 'Inactive'}</span>
+        </article>
+        <article className="status-card">
+          <p className="eyebrow">Pending request</p>
+          <h2>{pendingSubscription ? pendingSubscription.plan_name : 'No pending request'}</h2>
+          <p className="muted">{pendingSubscription ? `${formatDate(pendingSubscription.start_date)} to ${formatDate(pendingSubscription.end_date)}` : 'New requests will appear here until staff reviews them.'}</p>
+          <span className="pill">{pendingSubscription ? pendingSubscription.status : 'Clear'}</span>
+        </article>
+        <article className="status-card">
+          <p className="eyebrow">Latest payment</p>
+          <h2>{latestPayment ? `${Number(latestPayment.amount).toFixed(2)} SAR` : 'No payment yet'}</h2>
+          <p className="muted">{latestPayment ? `${latestPayment.plan_name} on ${formatDate(latestPayment.payment_date)}` : 'Payments appear here after staff records them.'}</p>
+          <span className="pill">{latestPayment ? latestPayment.payment_status : 'None'}</span>
+        </article>
+      </section> : null}
 
       {activeTab === 'plans' ? <><section className="plan-grid" aria-label="Membership plan comparison">
         {plans.map((plan) => (
@@ -268,13 +332,15 @@ export default function MemberDashboard() {
             <h2>{plan.plan_name}</h2>
             <strong>{Number(plan.price).toFixed(2)} SAR</strong>
             <p className="muted">{plan.description}</p>
-            <button type="button" disabled={isActionPending || hasPendingSubscription || hasActiveSubscription} onClick={() => requestSubscription(plan.plan_id)}>
-              {hasActiveSubscription ? 'Active plan' : hasPendingSubscription ? 'Request pending' : isActionPending ? pendingActionLabel : 'Request plan'}
+            <ul className="plan-features">
+              {planFeatures(plan).map((feature) => <li key={feature}>{feature}</li>)}
+            </ul>
+            <button type="button" disabled={pendingPlanIds.has(plan.plan_id) || hasPendingSubscription || isCurrentPlan(plan)} onClick={() => requestSubscription(plan.plan_id)}>
+              {pendingPlanIds.has(plan.plan_id) ? 'Creating request...' : planButtonLabel(plan)}
             </button>
           </article>
         ))}
-      </section>
-      <ResourceTable title="Membership plans" rows={plans} columns={planColumns} loading={loading} getRowKey={(plan) => plan.plan_id} /></> : null}
+      </section></> : null}
 
       {activeTab === 'sessions' ? <ResourceTable title="Available scheduled sessions" rows={sessions} columns={sessionColumns} loading={loading} getRowKey={(session) => session.session_id} /> : null}
 

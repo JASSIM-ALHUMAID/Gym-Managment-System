@@ -7,6 +7,8 @@ import { HttpError, asyncHandler } from '../http.js';
 export const subscriptionsRouter = Router();
 
 type PlanDurationRow = { plan_id: number; duration_months: number } & RowDataPacket;
+type CountRow = { count: number } & RowDataPacket;
+type SubscriptionMemberRow = { subscription_id: number; member_id: number } & RowDataPacket;
 
 function addMonths(date: Date, months: number) {
   const copy = new Date(date);
@@ -56,28 +58,47 @@ subscriptionsRouter.post('/request', asyncHandler(async (req, res) => {
   const planId = Number(req.body.plan_id);
   if (!Number.isInteger(planId) || planId <= 0) throw new HttpError(400, 'Valid plan id is required');
 
-  const [plans] = await pool.query<PlanDurationRow[]>('SELECT plan_id, duration_months FROM membership_plans WHERE plan_id = ?', [planId]);
-  const plan = plans[0];
-  if (!plan) throw new HttpError(404, 'Plan was not found');
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
 
-  const startDate = new Date();
-  const endDate = addMonths(startDate, plan.duration_months);
-  const [result] = await pool.query<ResultSetHeader>(
-    `INSERT INTO subscriptions (member_id, plan_id, start_date, end_date, status)
-     VALUES (?, ?, ?, ?, 'pending')`,
-    [user.member_id, planId, toSqlDate(startDate), toSqlDate(endDate)]
-  );
+    const [plans] = await connection.query<PlanDurationRow[]>('SELECT plan_id, duration_months FROM membership_plans WHERE plan_id = ?', [planId]);
+    const plan = plans[0];
+    if (!plan) throw new HttpError(404, 'Plan was not found');
 
-  res.status(201).json({
-    subscription: {
-      subscription_id: result.insertId,
-      member_id: user.member_id,
-      plan_id: planId,
-      start_date: toSqlDate(startDate),
-      end_date: toSqlDate(endDate),
-      status: 'pending'
-    }
-  });
+    await connection.query('SELECT member_id FROM members WHERE member_id = ? FOR UPDATE', [user.member_id]);
+
+    const [pendingRows] = await connection.query<CountRow[]>(
+      "SELECT COUNT(*) AS count FROM subscriptions WHERE member_id = ? AND status = 'pending' FOR UPDATE",
+      [user.member_id]
+    );
+    if ((pendingRows[0]?.count ?? 0) > 0) throw new HttpError(409, 'You already have a pending subscription request');
+
+    const startDate = new Date();
+    const endDate = addMonths(startDate, plan.duration_months);
+    const [result] = await connection.query<ResultSetHeader>(
+      `INSERT INTO subscriptions (member_id, plan_id, start_date, end_date, status)
+       VALUES (?, ?, ?, ?, 'pending')`,
+      [user.member_id, planId, toSqlDate(startDate), toSqlDate(endDate)]
+    );
+
+    await connection.commit();
+    res.status(201).json({
+      subscription: {
+        subscription_id: result.insertId,
+        member_id: user.member_id,
+        plan_id: planId,
+        start_date: toSqlDate(startDate),
+        end_date: toSqlDate(endDate),
+        status: 'pending'
+      }
+    });
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
 }));
 
 subscriptionsRouter.patch('/:id/activate', asyncHandler(async (req, res) => {
@@ -86,15 +107,41 @@ subscriptionsRouter.patch('/:id/activate', asyncHandler(async (req, res) => {
   const subscriptionId = Number(req.params.id);
   if (!Number.isInteger(subscriptionId) || subscriptionId <= 0) throw new HttpError(400, 'Valid subscription id is required');
 
-  const [result] = await pool.query<ResultSetHeader>(
-    `UPDATE subscriptions
-        SET status = 'active', approved_by_user_id = ?, cancelled_at = NULL
-      WHERE subscription_id = ?`,
-    [user.user_id, subscriptionId]
-  );
-  if (result.affectedRows === 0) throw new HttpError(404, 'Subscription was not found');
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [subscriptionRows] = await connection.query<SubscriptionMemberRow[]>(
+      'SELECT subscription_id, member_id FROM subscriptions WHERE subscription_id = ? LIMIT 1 FOR UPDATE',
+      [subscriptionId]
+    );
+    const subscription = subscriptionRows[0];
+    if (!subscription) throw new HttpError(404, 'Subscription was not found');
 
-  res.json({ subscription: { subscription_id: subscriptionId, status: 'active' } });
+    await connection.query('SELECT member_id FROM members WHERE member_id = ? FOR UPDATE', [subscription.member_id]);
+
+    await connection.query<ResultSetHeader>(
+      `UPDATE subscriptions
+          SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP
+        WHERE member_id = ? AND subscription_id <> ? AND status = 'active'`,
+      [subscription.member_id, subscriptionId]
+    );
+
+    const [result] = await connection.query<ResultSetHeader>(
+      `UPDATE subscriptions
+          SET status = 'active', approved_by_user_id = ?, cancelled_at = NULL
+        WHERE subscription_id = ? AND status = 'pending'`,
+      [user.user_id, subscriptionId]
+    );
+    if (result.affectedRows === 0) throw new HttpError(409, 'Subscription is not pending');
+
+    await connection.commit();
+    res.json({ subscription: { subscription_id: subscriptionId, status: 'active' } });
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
 }));
 
 subscriptionsRouter.patch('/:id/cancel', asyncHandler(async (req, res) => {

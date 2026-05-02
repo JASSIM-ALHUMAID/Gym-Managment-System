@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../auth';
 import ResourceTable, { type ResourceColumn, type ResourceRow } from './ResourceTable';
 
@@ -24,12 +24,45 @@ type AttendanceRow = ResourceRow & {
   attendance_status: string | null;
 };
 
+function formatDate(value: unknown) {
+  if (typeof value !== 'string' || value.length === 0) return '-';
+  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.000)?Z)?$/);
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(Number(year), Number(month) - 1, Number(day)));
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+}
+
+function formatTime(value: unknown) {
+  if (typeof value !== 'string' || value.length === 0) return '-';
+  const [hourText, minuteText] = value.split(':');
+  const hour = Number(hourText);
+  const minute = Number(minuteText);
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return value;
+  const date = new Date(2000, 0, 1, hour, minute);
+  return new Intl.DateTimeFormat('en', { hour: 'numeric', minute: '2-digit' }).format(date);
+}
+
+function formatDateTime(value: unknown) {
+  if (typeof value !== 'string' || value.length === 0) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date);
+}
+
+function formatSessionLabel(session: { session_type: string; session_date: string; start_time: string }) {
+  return `${session.session_type} - ${formatDate(session.session_date)} at ${formatTime(session.start_time)}`;
+}
+
 const sessionColumns: ResourceColumn<SessionRow>[] = [
   { key: 'session_id', label: 'ID' },
   { key: 'session_type', label: 'Type' },
-  { key: 'session_date', label: 'Date' },
-  { key: 'start_time', label: 'Start' },
-  { key: 'end_time', label: 'End' },
+  { key: 'session_date', label: 'Date', format: formatDate },
+  { key: 'start_time', label: 'Start', format: formatTime },
+  { key: 'end_time', label: 'End', format: formatTime },
   { key: 'location', label: 'Location' },
   { key: 'difficulty', label: 'Difficulty' },
   { key: 'booked_count', label: 'Booked' },
@@ -44,6 +77,17 @@ const attendanceColumns: ResourceColumn<AttendanceRow>[] = [
   { key: 'attendance_status', label: 'Current status' }
 ];
 
+const historyColumns: ResourceColumn<ResourceRow>[] = [
+  { key: 'attendance_id', label: 'ID' },
+  { key: 'session_type', label: 'Type' },
+  { key: 'member_name', label: 'Member' },
+  { key: 'attendance_status', label: 'Status' },
+  { key: 'session_date', label: 'Date', format: formatDate },
+  { key: 'location', label: 'Location' },
+  { key: 'difficulty', label: 'Difficulty' },
+  { key: 'marked_at', label: 'Marked', format: formatDateTime }
+];
+
 const attendanceStatuses = ['present', 'absent', 'late'];
 
 export default function TrainerDashboard() {
@@ -56,6 +100,7 @@ export default function TrainerDashboard() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'completed' | 'mark' | 'history'>('upcoming');
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -82,13 +127,29 @@ export default function TrainerDashboard() {
     };
   }, [request, user?.trainer_id]);
 
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const data = await request<{ attendance: ResourceRow[] }>('/attendance/history');
+      setHistory(data.attendance);
+    } catch {
+      // History loads in the background; keep attendance marking usable if it fails.
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [request]);
+
   useEffect(() => {
     let cancelled = false;
+    setHistoryLoading(true);
     request<{ attendance: ResourceRow[] }>('/attendance/history')
       .then((data) => {
         if (!cancelled) setHistory(data.attendance);
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setHistoryLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -142,6 +203,7 @@ export default function TrainerDashboard() {
       }
       const refreshed = await request<{ attendance: AttendanceRow[] }>(`/attendance/session/${sessionId}`);
       setAttendance(refreshed.attendance);
+      await loadHistory();
       setMessage('Attendance saved.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save attendance');
@@ -176,7 +238,7 @@ export default function TrainerDashboard() {
       ) : null}
 
       {activeTab === 'history' ? (
-        <ResourceTable title="Attendance history" rows={history} columns={['attendance_id', 'session_type', 'member_name', 'attendance_status', 'session_date', 'location', 'difficulty', 'marked_at'].map((key) => ({ key, label: key.replace(/_/g, ' ') }))} getRowKey={(row) => Number(row.attendance_id)} />
+        <ResourceTable title="Attendance history" rows={history} columns={historyColumns} loading={historyLoading} getRowKey={(row) => Number(row.attendance_id)} />
       ) : null}
 
       {activeTab === 'mark' ? <section className="panel">
@@ -188,7 +250,7 @@ export default function TrainerDashboard() {
           <select value={selectedSessionId ?? ''} disabled={saving} onChange={(event) => setSelectedSessionId(Number(event.target.value) || null)}>
             <option value="">Select session</option>
             {sessions.map((session) => (
-              <option key={session.session_id} value={session.session_id}>{session.session_type} - {session.session_date} {session.start_time}</option>
+              <option key={session.session_id} value={session.session_id}>{formatSessionLabel(session)}</option>
             ))}
           </select>
         </div>

@@ -63,25 +63,11 @@ export default function LoginPage() {
 
   return (
     <main className="login-page auth-page">
-      <section className="auth-hero-panel">
-        <Link className="brand-mark" to="/">
+      <section className="login-card wide-login-card auth-card">
+        <Link className="brand-mark auth-card-brand" to="/">
           <span className="brand-symbol" aria-hidden="true">IC</span>
           <span>Iron Command Center</span>
         </Link>
-        <div>
-          <p className="eyebrow">Controlled access</p>
-          <h1>{mode === 'login' ? 'Enter the command center.' : 'Create your member profile.'}</h1>
-          <p className="muted">Use a seeded demo user for the walkthrough, or register as a member to test the subscription and booking flow.</p>
-        </div>
-        <div className="auth-proof-grid" aria-label="System modules">
-          <span>Plans</span>
-          <span>Sessions</span>
-          <span>Bookings</span>
-          <span>Attendance</span>
-        </div>
-      </section>
-
-      <section className="login-card wide-login-card auth-card">
         <p className="eyebrow">Authentication</p>
         <h1>{mode === 'login' ? 'Sign in' : 'Register'}</h1>
         <p className="muted">Seeded demo users share the password <code>password123</code>.</p>
@@ -128,6 +114,7 @@ export default function LoginPage() {
           {error ? <p className="error" role="alert">{error}</p> : null}
           <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Please wait...' : mode === 'login' ? 'Sign in' : 'Create account'}</button>
         </form>
+        <Link className="text-link auth-back-link" to="/">Back to landing page</Link>
       </section>
     </main>
   );

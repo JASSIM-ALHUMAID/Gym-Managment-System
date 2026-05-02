@@ -6,6 +6,7 @@ export type ResourceColumn<Row extends ResourceRow> = {
   key: keyof Row | string;
   label: string;
   render?: (row: Row) => ReactNode;
+  format?: (value: unknown, row: Row) => ReactNode;
 };
 
 type ResourceTableProps<Row extends ResourceRow> = {
@@ -54,7 +55,13 @@ export default function ResourceTable<Row extends ResourceRow>({ title, rows, co
               {rows.map((row, index) => (
                 <tr key={getRowKey ? getRowKey(row, index) : fallbackRowKey(row, index)}>
                   {columns.map((column) => (
-                    <td key={String(column.key)}>{column.render ? column.render(row) : formatCell(row[column.key])}</td>
+                    <td key={String(column.key)}>
+                      {column.render
+                        ? column.render(row)
+                        : column.format
+                          ? column.format(row[column.key], row)
+                          : formatCell(row[column.key])}
+                    </td>
                   ))}
                 </tr>
               ))}
