@@ -97,7 +97,7 @@ bookingsRouter.get('/', asyncHandler(async (req, res) => {
     return;
   }
 
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
   const [rows] = await pool.query(
     `SELECT b.*, s.session_type, s.session_date, s.start_time, s.end_time, s.status AS session_status,
             member_user.full_name AS member_name, member_user.email AS member_email,
@@ -116,7 +116,7 @@ bookingsRouter.get('/', asyncHandler(async (req, res) => {
 
 bookingsRouter.post('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['member', 'admin', 'staff']);
+  requireRole(user, ['member', 'admin']);
 
   const sessionId = parseId(req.body.session_id, 'session id');
   const memberId = user.role === 'member' ? user.member_id : parseId(req.body.member_id, 'member id');
@@ -179,7 +179,7 @@ bookingsRouter.post('/', asyncHandler(async (req, res) => {
 
 bookingsRouter.patch('/:id/cancel', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['member', 'admin', 'staff']);
+  requireRole(user, ['member', 'admin']);
   const bookingId = parseId(req.params.id, 'booking id');
 
   const params: unknown[] = [bookingId];

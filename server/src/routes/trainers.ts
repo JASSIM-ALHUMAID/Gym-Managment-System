@@ -19,7 +19,7 @@ export const trainersRouter = Router();
 
 trainersRouter.get('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['admin', 'staff', 'member']);
+  requireRole(user, ['admin', 'member']);
 
   const [rows] = await pool.query<TrainerRow[]>(`
     SELECT t.trainer_id, t.specialty, t.hire_date,

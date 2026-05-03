@@ -36,7 +36,7 @@ describe('attendance workflow rules', () => {
     expect(isAttendanceStatus('excused')).toBe(false);
   });
 
-  it('uses the session trainer when admin or staff submit another trainer', () => {
+  it('uses the session trainer when admin submits another trainer', () => {
     expect(getMarkedByTrainerId(3, 8)).toBe(3);
   });
 });

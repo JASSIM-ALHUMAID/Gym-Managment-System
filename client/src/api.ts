@@ -1,7 +1,7 @@
 export type DemoUser = {
   user_id: number;
   username: string;
-  role: 'admin' | 'staff' | 'trainer' | 'member';
+  role: 'admin' | 'trainer' | 'member';
   full_name: string;
   email: string | null;
   status: string;

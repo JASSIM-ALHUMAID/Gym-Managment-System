@@ -20,7 +20,7 @@ async function getSessionTrainer(sessionId: number) {
 }
 
 function assertCanAccessSession(user: Awaited<ReturnType<typeof requireDemoUser>>, sessionTrainerId: number) {
-  if (user.role === 'admin' || user.role === 'staff') return;
+  if (user.role === 'admin') return;
   if (user.role === 'trainer' && user.trainer_id === sessionTrainerId) return;
   throw new HttpError(403, 'You are not allowed to perform this action');
 }
@@ -46,7 +46,7 @@ attendanceRouter.get('/', asyncHandler(async (req, res) => {
     return;
   }
 
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
   const [rows] = await pool.query(
     `SELECT a.*, s.session_type, s.session_date, s.start_time,
             member_user.full_name AS member_name, trainer_user.full_name AS trainer_name
@@ -84,7 +84,7 @@ attendanceRouter.get('/history', asyncHandler(async (req, res) => {
 
 attendanceRouter.get('/session/:sessionId', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['trainer', 'admin', 'staff']);
+  requireRole(user, ['trainer', 'admin']);
   const sessionId = parseId(req.params.sessionId, 'session id');
   const session = await getSessionTrainer(sessionId);
   if (!session) throw new HttpError(404, 'Session was not found');
@@ -107,7 +107,7 @@ attendanceRouter.get('/session/:sessionId', asyncHandler(async (req, res) => {
 
 attendanceRouter.post('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['trainer', 'admin', 'staff']);
+  requireRole(user, ['trainer', 'admin']);
 
   const sessionId = parseId(req.body.session_id, 'session id');
   const memberId = parseId(req.body.member_id, 'member id');

@@ -14,7 +14,7 @@ type DashboardLink = {
 };
 
 const dashboardLinks: DashboardLink[] = [
-  { to: '/admin', label: 'Admin ops', roles: ['admin', 'staff'] },
+  { to: '/admin', label: 'Admin ops', roles: ['admin'] },
   { to: '/trainer', label: 'Trainer floor', roles: ['trainer'] },
   { to: '/member', label: 'Member hub', roles: ['member'] }
 ];
@@ -77,7 +77,7 @@ function AppRoutes() {
         <Route path="/" element={<HomeRoute />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/admin" element={
-          <ProtectedRoute roles={['admin', 'staff']}>
+          <ProtectedRoute roles={['admin']}>
             <Shell><AdminDashboard /></Shell>
           </ProtectedRoute>
         } />

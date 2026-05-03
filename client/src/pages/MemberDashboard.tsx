@@ -201,7 +201,7 @@ export default function MemberDashboard() {
     if (pendingPlanIds.size > 0 || hasPendingSubscription) return;
     await runMemberAction(
       () => request('/subscriptions/request', { method: 'POST', body: JSON.stringify({ plan_id: planId }) }),
-      'Request created. Staff will review it soon.',
+      'Request created. Admin will review it soon.',
       setPendingPlanIds,
       planId
     );
@@ -296,7 +296,7 @@ export default function MemberDashboard() {
       {message ? <p className="success" role="status">{message}</p> : null}
 
       {!hasActiveSubscription ? (
-        <p className="empty-state">Choose a plan below and wait for staff approval before booking sessions.</p>
+        <p className="empty-state">Choose a plan below and wait for admin approval before booking sessions.</p>
       ) : null}
 
       <section className="tabs dashboard-tabs" aria-label="Member dashboard sections">
@@ -310,19 +310,19 @@ export default function MemberDashboard() {
         <article className="status-card">
           <p className="eyebrow">Current active plan</p>
           <h2>{activeSubscription ? activeSubscription.plan_name : 'No active plan'}</h2>
-          <p className="muted">{activeSubscription ? `${formatDate(activeSubscription.start_date)} to ${formatDate(activeSubscription.end_date)}` : 'Choose a plan and wait for staff approval.'}</p>
+          <p className="muted">{activeSubscription ? `${formatDate(activeSubscription.start_date)} to ${formatDate(activeSubscription.end_date)}` : 'Choose a plan and wait for admin approval.'}</p>
           <span className="pill">{activeSubscription ? activeSubscription.status : 'Inactive'}</span>
         </article>
         <article className="status-card">
           <p className="eyebrow">Pending request</p>
           <h2>{pendingSubscription ? pendingSubscription.plan_name : 'No pending request'}</h2>
-          <p className="muted">{pendingSubscription ? `${formatDate(pendingSubscription.start_date)} to ${formatDate(pendingSubscription.end_date)}` : 'New requests will appear here until staff reviews them.'}</p>
+          <p className="muted">{pendingSubscription ? `${formatDate(pendingSubscription.start_date)} to ${formatDate(pendingSubscription.end_date)}` : 'New requests will appear here until admin reviews them.'}</p>
           <span className="pill">{pendingSubscription ? pendingSubscription.status : 'Clear'}</span>
         </article>
         <article className="status-card">
           <p className="eyebrow">Latest payment</p>
           <h2>{latestPayment ? `${Number(latestPayment.amount).toFixed(2)} SAR` : 'No payment yet'}</h2>
-          <p className="muted">{latestPayment ? `${latestPayment.plan_name} on ${formatDate(latestPayment.payment_date)}` : 'Payments appear here after staff records them.'}</p>
+          <p className="muted">{latestPayment ? `${latestPayment.plan_name} on ${formatDate(latestPayment.payment_date)}` : 'Payments appear here after admin records them.'}</p>
           <span className="pill">{latestPayment ? latestPayment.payment_status : 'None'}</span>
         </article>
       </section> : null}

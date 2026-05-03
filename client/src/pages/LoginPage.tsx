@@ -5,7 +5,6 @@ import { useAuth } from '../auth';
 
 const sampleUsers = [
   { username: 'admin1', label: 'Admin User', role: 'Admin' },
-  { username: 'staff1', label: 'Staff User', role: 'Staff' },
   { username: 'trainer_ahmed', label: 'Ahmed Saleh', role: 'Trainer' },
   { username: 'trainer_lina', label: 'Lina Adel', role: 'Trainer' },
   { username: 'member_omar', label: 'Omar Alharbi', role: 'Member' },
@@ -14,7 +13,7 @@ const sampleUsers = [
 ];
 
 export function dashboardPathFor(user: DemoUser) {
-  if (user.role === 'admin' || user.role === 'staff') return '/admin';
+  if (user.role === 'admin') return '/admin';
   if (user.role === 'trainer') return '/trainer';
   return '/member';
 }

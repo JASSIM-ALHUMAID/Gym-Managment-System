@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'staff' | 'trainer' | 'member';
+export type Role = 'admin' | 'trainer' | 'member';
 
 export type DemoUser = {
   user_id: number;

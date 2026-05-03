@@ -93,7 +93,7 @@ export const sessionsRouter = Router();
 
 sessionsRouter.get('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  const statusFilter = user.role === 'admin' || user.role === 'staff' ? '' : "WHERE s.status = 'scheduled'";
+  const statusFilter = user.role === 'admin' ? '' : "WHERE s.status = 'scheduled'";
 
   const [rows] = await pool.query(`
     SELECT s.*, u.full_name AS trainer_name, t.specialty AS trainer_specialty, COALESCE(booked.booked_count, 0) AS booked_count
@@ -115,7 +115,7 @@ sessionsRouter.get('/', asyncHandler(async (req, res) => {
 
 sessionsRouter.post('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
   const input = parseSessionInput(req.body);
   if (!await trainerExists(input.trainer_id)) throw new HttpError(404, 'Trainer was not found');
 
@@ -129,7 +129,7 @@ sessionsRouter.post('/', asyncHandler(async (req, res) => {
 
 sessionsRouter.put('/:id', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
   const sessionId = Number(req.params.id);
   if (!Number.isInteger(sessionId) || sessionId <= 0) throw new HttpError(400, 'Valid session id is required');
   const input = parseSessionInput(req.body);
@@ -149,7 +149,7 @@ sessionsRouter.put('/:id', asyncHandler(async (req, res) => {
 
 sessionsRouter.patch('/:id/status', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
   const sessionId = Number(req.params.id);
   if (!Number.isInteger(sessionId) || sessionId <= 0) throw new HttpError(400, 'Valid session id is required');
   const status = String(req.body.status ?? '').trim();

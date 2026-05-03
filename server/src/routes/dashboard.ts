@@ -15,7 +15,7 @@ export const dashboardRouter = Router();
 
 dashboardRouter.get('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
 
   const [activeMembers, activeSubscriptions, scheduledSessions, openPayments] = await Promise.all([
     count("SELECT COUNT(*) AS count FROM users WHERE role = 'member' AND status = 'active'"),

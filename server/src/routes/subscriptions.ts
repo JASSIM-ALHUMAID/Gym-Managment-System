@@ -41,7 +41,7 @@ subscriptionsRouter.get('/', asyncHandler(async (req, res) => {
     return;
   }
 
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
   const [rows] = await pool.query(`
     SELECT s.*, p.plan_name, p.duration_months, p.price,
            m.member_id, u.user_id AS member_user_id, u.full_name AS member_name, u.email AS member_email
@@ -113,7 +113,7 @@ subscriptionsRouter.post('/request', asyncHandler(async (req, res) => {
 
 subscriptionsRouter.patch('/:id/activate', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
   const subscriptionId = Number(req.params.id);
   if (!Number.isInteger(subscriptionId) || subscriptionId <= 0) throw new HttpError(400, 'Valid subscription id is required');
 
@@ -156,7 +156,7 @@ subscriptionsRouter.patch('/:id/activate', asyncHandler(async (req, res) => {
 
 subscriptionsRouter.patch('/:id/cancel', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
   const subscriptionId = Number(req.params.id);
   if (!Number.isInteger(subscriptionId) || subscriptionId <= 0) throw new HttpError(400, 'Valid subscription id is required');
 

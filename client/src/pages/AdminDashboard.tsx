@@ -485,7 +485,7 @@ export default function AdminDashboard() {
     <div className="dashboard-stack">
       <section className="page-hero">
         <div>
-          <p className="eyebrow">{user?.role === 'staff' ? 'Staff command' : 'Admin command'}</p>
+          <p className="eyebrow">Admin command</p>
           <h1>Operations dashboard</h1>
           <p className="muted">Control members, plan requests, sessions, payments, and operations from focused admin workspaces.</p>
         </div>

@@ -7,7 +7,7 @@ export const membersRouter = Router();
 
 membersRouter.get('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
 
   const [rows] = await pool.query(`
     SELECT m.member_id, m.gender, m.join_date,

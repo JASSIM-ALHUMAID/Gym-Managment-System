@@ -98,13 +98,13 @@ describe('workflow route handlers', () => {
     expect(mocks.pool.query).not.toHaveBeenCalled();
   });
 
-  it('requires admin or staff access for dashboard counts', async () => {
+  it('requires admin access for dashboard counts', async () => {
     mocks.pool.query.mockResolvedValue([[{ count: 0 }]]);
 
     const response = await request(createApp()).get('/api/dashboard');
 
     expect(response.status).toBe(200);
-    expect(mocks.requireRole).toHaveBeenCalledWith(expect.objectContaining({ role: 'admin' }), ['admin', 'staff']);
+    expect(mocks.requireRole).toHaveBeenCalledWith(expect.objectContaining({ role: 'admin' }), ['admin']);
   });
 
   it('returns a clean error when member payments are requested without a member profile', async () => {

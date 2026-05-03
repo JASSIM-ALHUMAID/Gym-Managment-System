@@ -43,7 +43,7 @@ function createApp() {
   return app;
 }
 
-describe('admin and staff workflow routes', () => {
+describe('admin workflow routes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.pool.query.mockReset();
@@ -81,7 +81,7 @@ describe('admin and staff workflow routes', () => {
     expect(mocks.pool.query).toHaveBeenLastCalledWith(expect.stringContaining('description'), [1, 'Boxing Fundamentals', 'Technique-focused class for newer boxers', 'Studio C', 'beginner', '2026-05-01', '09:00:00', '10:00:00', 10]);
   });
 
-  it('activates pending subscriptions as admin or staff', async () => {
+  it('activates pending subscriptions as admin', async () => {
     mocks.connection.query.mockImplementation(async (sql: string) => {
       if (sql.includes('SELECT') && sql.includes('FROM subscriptions')) return [[{ subscription_id: 7, member_id: 3, status: 'pending' }]];
       if (sql.includes('SELECT member_id FROM members')) return [[{ member_id: 3 }]];
@@ -137,7 +137,7 @@ describe('admin and staff workflow routes', () => {
     expect(mocks.connection.release).toHaveBeenCalledOnce();
   });
 
-  it('cancels subscriptions as admin or staff', async () => {
+  it('cancels subscriptions as admin', async () => {
     mocks.pool.query.mockResolvedValueOnce([{ affectedRows: 1 }]);
 
     const response = await request(createApp())

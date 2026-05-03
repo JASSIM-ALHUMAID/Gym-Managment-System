@@ -47,7 +47,7 @@ plansRouter.get('/', asyncHandler(async (req, res) => {
 
 plansRouter.post('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
   const input = parsePlanInput(req.body);
 
   let result: ResultSetHeader;
@@ -66,7 +66,7 @@ plansRouter.post('/', asyncHandler(async (req, res) => {
 
 plansRouter.put('/:id', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
   const planId = Number(req.params.id);
   if (!Number.isInteger(planId) || planId <= 0) throw new HttpError(400, 'Valid plan id is required');
   const input = parsePlanInput(req.body);
@@ -88,7 +88,7 @@ plansRouter.put('/:id', asyncHandler(async (req, res) => {
 
 plansRouter.delete('/:id', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
   const planId = Number(req.params.id);
   if (!Number.isInteger(planId) || planId <= 0) throw new HttpError(400, 'Valid plan id is required');
 

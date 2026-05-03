@@ -23,7 +23,7 @@ paymentsRouter.get('/', asyncHandler(async (req, res) => {
     return;
   }
 
-  requireRole(user, ['admin', 'staff']);
+  requireRole(user, ['admin']);
   const [rows] = await pool.query(`
     SELECT pay.*, s.subscription_id, s.status AS subscription_status,
            p.plan_id, p.plan_name, m.member_id, u.full_name AS member_name, u.email AS member_email
