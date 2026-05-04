@@ -98,14 +98,12 @@ function toSessionResponse(sessionId: number, input: SessionInput) {
     session_id: sessionId,
     trainer_id: input.trainer_id,
     session_title: input.session_type,
-    session_type: input.session_type,
-    description: input.description,
-    location: input.location,
-    difficulty: input.difficulty,
+    session_type: input.difficulty,
     session_date: input.session_date,
     start_time: input.start_time,
     end_time: input.end_time,
-    capacity: input.capacity
+    capacity: input.capacity,
+    status: 'scheduled'
   };
 }
 

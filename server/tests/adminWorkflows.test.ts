@@ -62,7 +62,7 @@ describe('admin workflow routes', () => {
     mocks.requireRole.mockImplementation(() => undefined);
   });
 
-  it('creates sessions with description, location, and difficulty', async () => {
+  it('creates sessions with migrated session fields', async () => {
     mocks.pool.query
       .mockResolvedValueOnce([[{ count: 1 }]])
       .mockResolvedValueOnce([{ insertId: 12 }]);
@@ -84,11 +84,19 @@ describe('admin workflow routes', () => {
     expect(response.status).toBe(201);
     expect(response.body.session).toMatchObject({
       session_id: 12,
-      description: 'Technique-focused class for newer boxers',
-      location: 'Studio C',
-      difficulty: 'beginner'
+      trainer_id: 1,
+      session_title: 'Boxing Fundamentals',
+      session_type: 'beginner',
+      session_date: '2026-05-01',
+      start_time: '09:00:00',
+      end_time: '10:00:00',
+      capacity: 10,
+      status: 'scheduled'
     });
-    expect(mocks.pool.query).toHaveBeenLastCalledWith(expect.stringContaining('description'), [1, 'Boxing Fundamentals', 'Technique-focused class for newer boxers', 'Studio C', 'beginner', '2026-05-01', '09:00:00', '10:00:00', 10]);
+    expect(response.body.session.description).toBeUndefined();
+    expect(response.body.session.location).toBeUndefined();
+    expect(response.body.session.difficulty).toBeUndefined();
+    expect(mocks.pool.query).toHaveBeenLastCalledWith(expect.stringContaining('INSERT INTO `session`'), [1, 'Boxing Fundamentals', 'beginner', '2026-05-01', '09:00:00', '10:00:00', 10, 'Scheduled']);
   });
 
   it('activates pending subscriptions as admin', async () => {
