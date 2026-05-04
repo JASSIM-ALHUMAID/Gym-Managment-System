@@ -145,6 +145,10 @@ describe('member subscription and booking workflows', () => {
 
     expect(response.status).toBe(403);
     expect(response.body).toEqual({ error: 'An active subscription is required to book sessions' });
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM subscription'), [1]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('JOIN membershipplan'), [1]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('s.MemberUserID = ?'), [1]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining("s.Status = 'Active'"), [1]);
     expect(mocks.connection.rollback).toHaveBeenCalledOnce();
   });
 
@@ -152,7 +156,7 @@ describe('member subscription and booking workflows', () => {
     mocks.connection.query
       .mockResolvedValueOnce([[{ member_id: 1 }]])
       .mockResolvedValueOnce([[{ plan_name: 'Monthly Basic' }]])
-      .mockResolvedValueOnce([[{ status: 'scheduled', capacity: 10, session_type: 'Yoga Flow' }]]);
+      .mockResolvedValueOnce([[{ status: 'Scheduled', capacity: 10, session_type: 'Personal Training' }]]);
 
     const response = await request(createApp())
       .post('/api/bookings')
@@ -160,6 +164,31 @@ describe('member subscription and booking workflows', () => {
 
     expect(response.status).toBe(403);
     expect(response.body).toEqual({ error: 'Your current plan does not include this session' });
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining('SessionType AS session_type'), [3]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining('FROM `session`'), [3]);
     expect(mocks.connection.rollback).toHaveBeenCalledOnce();
+  });
+
+  it('creates confirmed bookings in the migrated booking table', async () => {
+    mocks.connection.query
+      .mockResolvedValueOnce([[{ member_id: 1 }]])
+      .mockResolvedValueOnce([[{ plan_name: 'Monthly Premium' }]])
+      .mockResolvedValueOnce([[{ status: 'Scheduled', capacity: 10, session_type: 'Personal Training' }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{ count: 0 }]])
+      .mockResolvedValueOnce([{ insertId: 22 }]);
+
+    const response = await request(createApp())
+      .post('/api/bookings')
+      .send({ session_id: 3 });
+
+    expect(response.status).toBe(201);
+    expect(response.body.booking).toEqual({ booking_id: 22, member_id: 1, session_id: 3, booking_status: 'confirmed' });
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining('FROM booking'), [1, 3]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(5, expect.stringContaining("BookingStatus IN ('Confirmed', 'Booked')"), [3]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(6, expect.stringContaining('INSERT INTO booking'), [1, 3]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(6, expect.stringContaining("'Confirmed'"), [1, 3]);
+    expect(mocks.connection.commit).toHaveBeenCalledOnce();
+    expect(mocks.connection.rollback).not.toHaveBeenCalled();
   });
 });

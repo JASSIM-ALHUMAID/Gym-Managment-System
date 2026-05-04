@@ -10,6 +10,10 @@ type CountRow = { count: number } & RowDataPacket;
 type ExistingBookingRow = { booking_id: number; booking_status: string } & RowDataPacket;
 type BookingStatusRow = { booking_status: string } & RowDataPacket;
 
+function normalizeStatus(value: string) {
+  return value.trim().toLowerCase();
+}
+
 function parseId(value: unknown, label: string) {
   const id = Number(value);
   if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, `Valid ${label} is required`);
@@ -18,11 +22,11 @@ function parseId(value: unknown, label: string) {
 
 async function memberExists(connection: PoolConnection, memberId: number) {
   const [rows] = await connection.query<RowDataPacket[]>(
-    `SELECT members.member_id
-       FROM members
-       JOIN users ON users.user_id = members.user_id
-      WHERE members.member_id = ? AND users.status = 'active'
-      FOR UPDATE`,
+    `SELECT member.UserID AS member_id
+       FROM member
+       JOIN \`user\` ON \`user\`.UserID = member.UserID
+      WHERE member.UserID = ? AND \`user\`.Status = 'Active'
+       FOR UPDATE`,
     [memberId]
   );
   return rows.length > 0;
@@ -30,7 +34,7 @@ async function memberExists(connection: PoolConnection, memberId: number) {
 
 async function getLockedSession(connection: PoolConnection, sessionId: number) {
   const [rows] = await connection.query<SessionRow[]>(
-    'SELECT status, capacity, session_type FROM sessions WHERE session_id = ? FOR UPDATE',
+    'SELECT Status AS status, Capacity AS capacity, SessionType AS session_type FROM `session` WHERE SessionID = ? FOR UPDATE',
     [sessionId]
   );
   return rows[0] ?? null;
@@ -38,7 +42,7 @@ async function getLockedSession(connection: PoolConnection, sessionId: number) {
 
 async function getBookedCount(connection: PoolConnection, sessionId: number) {
   const [rows] = await connection.query<CountRow[]>(
-    "SELECT COUNT(*) AS count FROM bookings WHERE session_id = ? AND booking_status = 'booked'",
+    "SELECT COUNT(*) AS count FROM booking WHERE SessionID = ? AND BookingStatus IN ('Confirmed', 'Booked')",
     [sessionId]
   );
   return rows[0]?.count ?? 0;
@@ -46,13 +50,13 @@ async function getBookedCount(connection: PoolConnection, sessionId: number) {
 
 async function getActivePlanName(connection: PoolConnection, memberId: number) {
   const [rows] = await connection.query<({ plan_name: string } & RowDataPacket)[]>(
-    `SELECT p.plan_name
-       FROM subscriptions s
-       JOIN membership_plans p ON p.plan_id = s.plan_id
-      WHERE s.member_id = ?
-        AND s.status = 'active'
-        AND CURDATE() BETWEEN s.start_date AND s.end_date
-      ORDER BY s.start_date DESC
+    `SELECT p.PlanName AS plan_name
+       FROM subscription s
+       JOIN membershipplan p ON p.PlanID = s.PlanID
+      WHERE s.MemberUserID = ?
+        AND s.Status = 'Active'
+        AND CURDATE() BETWEEN s.StartDate AND s.EndDate
+      ORDER BY s.StartDate DESC
       LIMIT 1`,
     [memberId]
   );
@@ -69,7 +73,7 @@ function planIncludesSession(planName: string, sessionType: string) {
 
 async function getExistingBooking(connection: PoolConnection, memberId: number, sessionId: number) {
   const [rows] = await connection.query<ExistingBookingRow[]>(
-    'SELECT booking_id, booking_status FROM bookings WHERE member_id = ? AND session_id = ? LIMIT 1',
+    'SELECT BookingID AS booking_id, BookingStatus AS booking_status FROM booking WHERE MemberUserID = ? AND SessionID = ? LIMIT 1',
     [memberId, sessionId]
   );
   return rows[0] ?? null;
@@ -84,11 +88,17 @@ bookingsRouter.get('/', asyncHandler(async (req, res) => {
     if (!user.member_id) throw new HttpError(403, 'Member profile is required');
     const [rows] = await pool.query(
       `SELECT b.*, s.session_type, s.session_date, s.start_time, s.end_time, s.status AS session_status,
-              u.full_name AS trainer_name
-         FROM bookings b
-         JOIN sessions s ON s.session_id = b.session_id
-         JOIN trainers t ON t.trainer_id = s.trainer_id
-         JOIN users u ON u.user_id = t.user_id
+              u.FullName AS trainer_name
+         FROM (
+           SELECT BookingID AS booking_id, MemberUserID AS member_id, SessionID AS session_id, BookingDate AS booking_date, LOWER(BookingStatus) AS booking_status
+             FROM booking
+         ) b
+         JOIN (
+           SELECT SessionID AS session_id, TrainerUserID AS trainer_id, SessionTitle AS session_type, SessionDate AS session_date, StartTime AS start_time, EndTime AS end_time, LOWER(Status) AS status
+             FROM \`session\`
+         ) s ON s.session_id = b.session_id
+         JOIN trainer t ON t.UserID = s.trainer_id
+         JOIN \`user\` u ON u.UserID = t.UserID
         WHERE b.member_id = ?
         ORDER BY s.session_date DESC, s.start_time DESC`,
       [user.member_id]
@@ -100,14 +110,20 @@ bookingsRouter.get('/', asyncHandler(async (req, res) => {
   requireRole(user, ['admin']);
   const [rows] = await pool.query(
     `SELECT b.*, s.session_type, s.session_date, s.start_time, s.end_time, s.status AS session_status,
-            member_user.full_name AS member_name, member_user.email AS member_email,
-            trainer_user.full_name AS trainer_name
-       FROM bookings b
-       JOIN members m ON m.member_id = b.member_id
-       JOIN users member_user ON member_user.user_id = m.user_id
-       JOIN sessions s ON s.session_id = b.session_id
-       JOIN trainers t ON t.trainer_id = s.trainer_id
-       JOIN users trainer_user ON trainer_user.user_id = t.user_id
+            member_user.FullName AS member_name, member_user.Email AS member_email,
+            trainer_user.FullName AS trainer_name
+       FROM (
+         SELECT BookingID AS booking_id, MemberUserID AS member_id, SessionID AS session_id, BookingDate AS booking_date, LOWER(BookingStatus) AS booking_status
+           FROM booking
+       ) b
+       JOIN member m ON m.UserID = b.member_id
+       JOIN \`user\` member_user ON member_user.UserID = m.UserID
+       JOIN (
+         SELECT SessionID AS session_id, TrainerUserID AS trainer_id, SessionTitle AS session_type, SessionDate AS session_date, StartTime AS start_time, EndTime AS end_time, LOWER(Status) AS status
+           FROM \`session\`
+       ) s ON s.session_id = b.session_id
+       JOIN trainer t ON t.UserID = s.trainer_id
+       JOIN \`user\` trainer_user ON trainer_user.UserID = t.UserID
       ORDER BY s.session_date DESC, s.start_time DESC`
   );
 
@@ -152,23 +168,23 @@ bookingsRouter.post('/', asyncHandler(async (req, res) => {
     const bookingId = existing?.booking_id;
     if (existing) {
       await connection.query<ResultSetHeader>(
-        "UPDATE bookings SET booking_status = 'booked', booking_date = CURDATE() WHERE booking_id = ?",
+        "UPDATE booking SET BookingStatus = 'Confirmed', BookingDate = CURDATE() WHERE BookingID = ?",
         [existing.booking_id]
       );
     } else {
       const [result] = await connection.query<ResultSetHeader>(
-        "INSERT INTO bookings (member_id, session_id, booking_date, booking_status) VALUES (?, ?, CURDATE(), 'booked')",
+        "INSERT INTO booking (MemberUserID, SessionID, BookingDate, BookingStatus) VALUES (?, ?, CURDATE(), 'Confirmed')",
         [memberId, sessionId]
       );
       await connection.commit();
       committed = true;
-      res.status(statusCode).json({ booking: { booking_id: result.insertId, member_id: memberId, session_id: sessionId, booking_status: 'booked' } });
+      res.status(statusCode).json({ booking: { booking_id: result.insertId, member_id: memberId, session_id: sessionId, booking_status: 'confirmed' } });
       return;
     }
 
     await connection.commit();
     committed = true;
-    res.status(statusCode).json({ booking: { booking_id: bookingId, member_id: memberId, session_id: sessionId, booking_status: 'booked' } });
+    res.status(statusCode).json({ booking: { booking_id: bookingId, member_id: memberId, session_id: sessionId, booking_status: 'confirmed' } });
   } catch (error) {
     if (!committed) await connection.rollback();
     throw error;
@@ -186,20 +202,20 @@ bookingsRouter.patch('/:id/cancel', asyncHandler(async (req, res) => {
   let memberFilter = '';
   if (user.role === 'member') {
     if (!user.member_id) throw new HttpError(403, 'Member profile is required');
-    memberFilter = ' AND member_id = ?';
+    memberFilter = ' AND MemberUserID = ?';
     params.push(user.member_id);
   }
 
   const [bookingRows] = await pool.query<BookingStatusRow[]>(
-    `SELECT booking_status FROM bookings WHERE booking_id = ?${memberFilter} LIMIT 1`,
+    `SELECT BookingStatus AS booking_status FROM booking WHERE BookingID = ?${memberFilter} LIMIT 1`,
     params
   );
   const booking = bookingRows[0];
   if (!booking) throw new HttpError(404, 'Booking was not found');
-  if (booking.booking_status === 'cancelled') throw new HttpError(409, 'Booking is already cancelled');
+  if (normalizeStatus(booking.booking_status) === 'cancelled') throw new HttpError(409, 'Booking is already cancelled');
 
   const [result] = await pool.query<ResultSetHeader>(
-    `UPDATE bookings SET booking_status = 'cancelled' WHERE booking_id = ?${memberFilter}`,
+    `UPDATE booking SET BookingStatus = 'Cancelled' WHERE BookingID = ?${memberFilter}`,
     params
   );
   if (result.affectedRows === 0) throw new HttpError(404, 'Booking was not found');

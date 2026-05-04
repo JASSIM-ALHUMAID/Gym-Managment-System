@@ -30,6 +30,7 @@ vi.mock('../src/auth.js', () => ({
 }));
 
 const { bookingsRouter } = await import('../src/routes/bookings.js');
+const { sessionsRouter } = await import('../src/routes/sessions.js');
 const { attendanceRouter } = await import('../src/routes/attendance.js');
 const { dashboardRouter } = await import('../src/routes/dashboard.js');
 const { paymentsRouter } = await import('../src/routes/payments.js');
@@ -40,6 +41,7 @@ function createApp() {
   const app = express();
   app.use(express.json());
   app.use('/api/bookings', bookingsRouter);
+  app.use('/api/sessions', sessionsRouter);
   app.use('/api/attendance', attendanceRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/payments', paymentsRouter);
@@ -71,10 +73,46 @@ describe('workflow route handlers', () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'Session is full' });
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('JOIN users'), [10]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining("users.status = 'active'"), [10]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('FROM member'), [10]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('JOIN `user`'), [10]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining("`user`.Status = 'Active'"), [10]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM `session`'), [20]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining('FROM booking'), [20]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining("BookingStatus IN ('Confirmed', 'Booked')"), [20]);
     expect(mocks.connection.rollback).toHaveBeenCalledOnce();
     expect(mocks.connection.release).toHaveBeenCalledOnce();
+  });
+
+  it('lists sessions from the migrated session schema with lower-case statuses', async () => {
+    mocks.pool.query.mockResolvedValueOnce([[{
+      session_id: 20,
+      trainer_id: 3,
+      session_title: 'Yoga Flow',
+      session_type: 'beginner',
+      session_date: '2026-05-01',
+      start_time: '09:00:00',
+      end_time: '10:00:00',
+      capacity: 12,
+      status: 'scheduled',
+      trainer_name: 'Nora Trainer',
+      trainer_specialty: 'Yoga',
+      booked_count: 1
+    }]]);
+
+    const response = await request(createApp()).get('/api/sessions');
+
+    expect(response.status).toBe(200);
+    expect(response.body.sessions[0]).toMatchObject({
+      session_id: 20,
+      session_title: 'Yoga Flow',
+      session_type: 'beginner',
+      status: 'scheduled',
+      trainer_name: 'Nora Trainer'
+    });
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('s.SessionTitle AS session_title'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('LOWER(s.Status) AS status'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('FROM `session` s'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining("BookingStatus IN ('Confirmed', 'Booked')"));
   });
 
   it('returns 409 when cancelling an already cancelled booking through the bookings route', async () => {

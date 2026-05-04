@@ -1,8 +1,12 @@
 export type ExistingBooking = { booking_id: number; booking_status: string };
 
+function normalizeStatus(value: string | undefined) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
 export function canBookSession(input: { status: string; capacity: number; bookedCount: number; existingBookingStatus?: string }) {
-  if (input.status !== 'scheduled') return 'Session is not available for booking';
-  if (input.existingBookingStatus === 'booked') return 'Member already booked this session';
+  if (normalizeStatus(input.status) !== 'scheduled') return 'Session is not available for booking';
+  if (['booked', 'confirmed'].includes(normalizeStatus(input.existingBookingStatus))) return 'Member already booked this session';
   if (input.bookedCount >= input.capacity) return 'Session is full';
   return 'ok';
 }
