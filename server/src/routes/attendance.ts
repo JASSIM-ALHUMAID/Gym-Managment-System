@@ -39,8 +39,9 @@ attendanceRouter.get('/', asyncHandler(async (req, res) => {
               a.MarkedByTrainerUserID AS marked_by_trainer_id,
               LOWER(a.AttendanceStatus) AS attendance_status,
               a.MarkedAt AS marked_at,
-              s.SessionType AS session_type, s.SessionDate AS session_date, s.StartTime AS start_time,
-              s.Location AS location, LOWER(s.Difficulty) AS difficulty, member_user.FullName AS member_name
+              s.SessionTitle AS session_title, s.SessionType AS session_type,
+              s.SessionDate AS session_date, s.StartTime AS start_time,
+              member_user.FullName AS member_name
          FROM attendance a
          JOIN booking b ON b.BookingID = a.BookingID
          JOIN \`session\` s ON s.SessionID = b.SessionID
@@ -62,7 +63,8 @@ attendanceRouter.get('/', asyncHandler(async (req, res) => {
             a.MarkedByTrainerUserID AS marked_by_trainer_id,
             LOWER(a.AttendanceStatus) AS attendance_status,
             a.MarkedAt AS marked_at,
-            s.SessionType AS session_type, s.SessionDate AS session_date, s.StartTime AS start_time,
+            s.SessionTitle AS session_title, s.SessionType AS session_type,
+            s.SessionDate AS session_date, s.StartTime AS start_time,
             member_user.FullName AS member_name, trainer_user.FullName AS trainer_name
        FROM attendance a
         JOIN booking b ON b.BookingID = a.BookingID
@@ -89,8 +91,9 @@ attendanceRouter.get('/history', asyncHandler(async (req, res) => {
             a.MarkedByTrainerUserID AS marked_by_trainer_id,
             LOWER(a.AttendanceStatus) AS attendance_status,
             a.MarkedAt AS marked_at,
-            s.SessionType AS session_type, s.SessionDate AS session_date, s.StartTime AS start_time,
-            s.EndTime AS end_time, s.Location AS location, LOWER(s.Difficulty) AS difficulty,
+            s.SessionTitle AS session_title, s.SessionType AS session_type,
+            s.SessionDate AS session_date, s.StartTime AS start_time,
+            s.EndTime AS end_time,
             member_user.FullName AS member_name, member_user.Email AS member_email
        FROM attendance a
         JOIN booking b ON b.BookingID = a.BookingID

@@ -47,9 +47,8 @@ describe('trainer workflow routes', () => {
   it('returns trainer attendance history with session metadata', async () => {
     mocks.pool.query.mockResolvedValueOnce([[{
       attendance_id: 1,
+      session_title: 'Upper Body Circuit',
       session_type: 'Morning Strength',
-      location: 'Strength Zone',
-      difficulty: 'intermediate',
       member_name: 'Omar Alharbi',
       attendance_status: 'present'
     }]]);
@@ -57,10 +56,34 @@ describe('trainer workflow routes', () => {
     const response = await request(createApp()).get('/api/attendance/history');
 
     expect(response.status).toBe(200);
-    expect(response.body.attendance[0]).toMatchObject({ location: 'Strength Zone', difficulty: 'intermediate' });
-    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('s.Location AS location'), [1]);
+    expect(response.body.attendance[0]).toMatchObject({ session_title: 'Upper Body Circuit', session_type: 'Morning Strength' });
+    expect(response.body.attendance[0].location).toBeUndefined();
+    expect(response.body.attendance[0].difficulty).toBeUndefined();
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('s.SessionTitle AS session_title'), [1]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.not.stringContaining('Location'), [1]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.not.stringContaining('Difficulty'), [1]);
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('JOIN booking b ON b.BookingID = a.BookingID'), [1]);
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('LOWER(a.AttendanceStatus) AS attendance_status'), [1]);
+  });
+
+  it('returns trainer attendance list with valid session schema fields', async () => {
+    mocks.pool.query.mockResolvedValueOnce([[{
+      attendance_id: 1,
+      session_title: 'Upper Body Circuit',
+      session_type: 'Morning Strength',
+      member_name: 'Omar Alharbi',
+      attendance_status: 'present'
+    }]]);
+
+    const response = await request(createApp()).get('/api/attendance');
+
+    expect(response.status).toBe(200);
+    expect(response.body.attendance[0]).toMatchObject({ session_title: 'Upper Body Circuit', session_type: 'Morning Strength' });
+    expect(response.body.attendance[0].location).toBeUndefined();
+    expect(response.body.attendance[0].difficulty).toBeUndefined();
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('s.SessionTitle AS session_title'), [1]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.not.stringContaining('Location'), [1]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.not.stringContaining('Difficulty'), [1]);
   });
 
   it('marks attendance through the matching booking id', async () => {
