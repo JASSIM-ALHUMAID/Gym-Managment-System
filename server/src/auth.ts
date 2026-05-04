@@ -7,6 +7,7 @@ import { HttpError } from './http.js';
 import type { DemoUser, Role } from './types.js';
 
 type UserRow = Omit<DemoUser, 'role'> & { role: Role | null; password_hash?: string } & RowDataPacket;
+type UserWithRole = DemoUser & { password_hash?: string } & RowDataPacket;
 
 const JWT_EXPIRES_IN = '8h';
 
@@ -30,8 +31,11 @@ export async function verifyPassword(password: string, passwordHash: string) {
   return bcrypt.compare(password, passwordHash);
 }
 
-function publicUser(user: UserRow): DemoUser {
-  if (!user.role) throw new HttpError(401, 'Active user was not found');
+function hasRole(user: UserRow | null): user is UserWithRole {
+  return user?.role != null;
+}
+
+function publicUser(user: UserWithRole): DemoUser {
   return {
     user_id: user.user_id,
     username: user.username,
@@ -69,7 +73,7 @@ export async function findDemoUser(username: string) {
   );
 
   const user = rows[0] ?? null;
-  return user?.role ? user : null;
+  return hasRole(user) ? user : null;
 }
 
 export async function findPublicUserById(userId: number) {
@@ -96,7 +100,7 @@ export async function findPublicUserById(userId: number) {
     [userId]
   );
   const user = rows[0] ?? null;
-  return user?.role ? publicUser(user) : null;
+  return hasRole(user) ? publicUser(user) : null;
 }
 
 export function requireBearerToken(req: Request) {
