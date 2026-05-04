@@ -36,6 +36,7 @@ const { trainersRouter } = await import('../src/routes/trainers.js');
 const { plansRouter } = await import('../src/routes/plans.js');
 const { paymentsRouter } = await import('../src/routes/payments.js');
 const { dashboardRouter } = await import('../src/routes/dashboard.js');
+const { usersRouter } = await import('../src/routes/users.js');
 
 function createApp() {
   const app = express();
@@ -47,6 +48,7 @@ function createApp() {
   app.use('/api/plans', plansRouter);
   app.use('/api/payments', paymentsRouter);
   app.use('/api/dashboard', dashboardRouter);
+  app.use('/api/users', usersRouter);
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     sendError(error, res);
   });
@@ -232,6 +234,34 @@ describe('admin workflow routes', () => {
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('m.UserID AS member_id'));
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('FROM member m'));
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('JOIN `user` u ON u.UserID = m.UserID'));
+  });
+
+  it('lists users from gym schema with snake case aliases', async () => {
+    mocks.pool.query.mockResolvedValueOnce([[{
+      user_id: 2,
+      username: 'member2',
+      full_name: 'Member Two',
+      email: 'member@example.com',
+      phone: '555-0102',
+      status: 'active',
+      created_at: '2026-01-06 08:00:00'
+    }]]);
+
+    const response = await request(createApp()).get('/api/users');
+
+    expect(response.status).toBe(200);
+    expect(response.body.users).toEqual([{
+      user_id: 2,
+      username: 'member2',
+      full_name: 'Member Two',
+      email: 'member@example.com',
+      phone: '555-0102',
+      status: 'active',
+      created_at: '2026-01-06 08:00:00'
+    }]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('u.UserID AS user_id'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('FROM `user` u'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.not.stringContaining('FROM users'));
   });
 
   it('lists trainers from gym schema and hides contact fields from members', async () => {
