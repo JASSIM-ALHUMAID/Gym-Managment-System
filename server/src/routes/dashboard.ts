@@ -17,12 +17,18 @@ dashboardRouter.get('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
   requireRole(user, ['admin']);
 
-  const [activeMembers, activeSubscriptions, scheduledSessions, openPayments] = await Promise.all([
-    count("SELECT COUNT(*) AS count FROM `user` u JOIN member m ON m.UserID = u.UserID WHERE LOWER(u.Status) = 'active'"),
-    count("SELECT COUNT(*) AS count FROM subscription WHERE LOWER(Status) = 'active'"),
-    count("SELECT COUNT(*) AS count FROM session WHERE LOWER(Status) = 'scheduled'"),
-    count("SELECT COUNT(*) AS count FROM payment WHERE LOWER(PaymentStatus) IN ('pending', 'failed')")
+  const [users, members, trainers, staff, plans, subscriptions, payments, sessions, bookings, attendance] = await Promise.all([
+    count('SELECT COUNT(*) AS count FROM `user`'),
+    count('SELECT COUNT(*) AS count FROM member'),
+    count('SELECT COUNT(*) AS count FROM trainer'),
+    count('SELECT COUNT(*) AS count FROM staff'),
+    count('SELECT COUNT(*) AS count FROM membershipplan'),
+    count('SELECT COUNT(*) AS count FROM subscription'),
+    count('SELECT COUNT(*) AS count FROM payment'),
+    count('SELECT COUNT(*) AS count FROM session'),
+    count('SELECT COUNT(*) AS count FROM booking'),
+    count('SELECT COUNT(*) AS count FROM attendance')
   ]);
 
-  res.json({ activeMembers, activeSubscriptions, scheduledSessions, openPayments });
+  res.json({ users, members, trainers, staff, plans, subscriptions, payments, sessions, bookings, attendance });
 }));

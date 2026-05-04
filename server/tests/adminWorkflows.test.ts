@@ -312,19 +312,41 @@ describe('admin workflow routes', () => {
 
   it('counts dashboard metrics from gym schema tables and CamelCase statuses', async () => {
     mocks.pool.query
+      .mockResolvedValueOnce([[{ count: 1 }]])
       .mockResolvedValueOnce([[{ count: 2 }]])
       .mockResolvedValueOnce([[{ count: 3 }]])
       .mockResolvedValueOnce([[{ count: 4 }]])
-      .mockResolvedValueOnce([[{ count: 5 }]]);
+      .mockResolvedValueOnce([[{ count: 5 }]])
+      .mockResolvedValueOnce([[{ count: 6 }]])
+      .mockResolvedValueOnce([[{ count: 7 }]])
+      .mockResolvedValueOnce([[{ count: 8 }]])
+      .mockResolvedValueOnce([[{ count: 9 }]])
+      .mockResolvedValueOnce([[{ count: 10 }]]);
 
     const response = await request(createApp()).get('/api/dashboard');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ activeMembers: 2, activeSubscriptions: 3, scheduledSessions: 4, openPayments: 5 });
-    expect(mocks.pool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('FROM `user` u'));
-    expect(mocks.pool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('JOIN member m ON m.UserID = u.UserID'));
-    expect(mocks.pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM subscription'));
-    expect(mocks.pool.query).toHaveBeenNthCalledWith(3, expect.stringContaining('FROM session'));
-    expect(mocks.pool.query).toHaveBeenNthCalledWith(4, expect.stringContaining('FROM payment'));
+    expect(response.body).toEqual({
+      users: 1,
+      members: 2,
+      trainers: 3,
+      staff: 4,
+      plans: 5,
+      subscriptions: 6,
+      payments: 7,
+      sessions: 8,
+      bookings: 9,
+      attendance: 10
+    });
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('FROM `user`'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM member'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(3, expect.stringContaining('FROM trainer'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(4, expect.stringContaining('FROM staff'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(5, expect.stringContaining('FROM membershipplan'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(6, expect.stringContaining('FROM subscription'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(7, expect.stringContaining('FROM payment'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(8, expect.stringContaining('FROM session'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(9, expect.stringContaining('FROM booking'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(10, expect.stringContaining('FROM attendance'));
   });
 });
