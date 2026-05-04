@@ -321,16 +321,20 @@ describe('admin workflow routes', () => {
       .mockResolvedValueOnce([[{ count: 7 }]])
       .mockResolvedValueOnce([[{ count: 8 }]])
       .mockResolvedValueOnce([[{ count: 9 }]])
-      .mockResolvedValueOnce([[{ count: 10 }]]);
+      .mockResolvedValueOnce([[{ count: 10 }]])
+      .mockResolvedValueOnce([[{ count: 11 }]])
+      .mockResolvedValueOnce([[{ count: 12 }]])
+      .mockResolvedValueOnce([[{ count: 13 }]])
+      .mockResolvedValueOnce([[{ count: 14 }]]);
 
     const response = await request(createApp()).get('/api/dashboard');
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
-      activeMembers: 2,
-      activeSubscriptions: 6,
-      scheduledSessions: 8,
-      openPayments: 7,
+      activeMembers: 11,
+      activeSubscriptions: 12,
+      scheduledSessions: 13,
+      openPayments: 14,
       counts: {
         users: 1,
         members: 2,
@@ -354,5 +358,13 @@ describe('admin workflow routes', () => {
     expect(mocks.pool.query).toHaveBeenNthCalledWith(8, expect.stringContaining('FROM session'));
     expect(mocks.pool.query).toHaveBeenNthCalledWith(9, expect.stringContaining('FROM booking'));
     expect(mocks.pool.query).toHaveBeenNthCalledWith(10, expect.stringContaining('FROM attendance'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(11, expect.stringContaining('JOIN member m ON m.UserID = u.UserID'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(11, expect.stringContaining("u.Status = 'Active'"));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(12, expect.stringContaining('FROM subscription'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(12, expect.stringContaining("Status = 'Active'"));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(13, expect.stringContaining('FROM session'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(13, expect.stringContaining("Status = 'Scheduled'"));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(14, expect.stringContaining('FROM payment'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(14, expect.stringContaining("PaymentStatus IN ('Pending', 'Failed')"));
   });
 });
