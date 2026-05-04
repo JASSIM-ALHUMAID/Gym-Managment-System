@@ -18,10 +18,10 @@ dashboardRouter.get('/', asyncHandler(async (req, res) => {
   requireRole(user, ['admin']);
 
   const [activeMembers, activeSubscriptions, scheduledSessions, openPayments] = await Promise.all([
-    count("SELECT COUNT(*) AS count FROM users WHERE role = 'member' AND status = 'active'"),
-    count("SELECT COUNT(*) AS count FROM subscriptions WHERE status = 'active'"),
-    count("SELECT COUNT(*) AS count FROM sessions WHERE status = 'scheduled'"),
-    count("SELECT COUNT(*) AS count FROM payments WHERE payment_status IN ('pending', 'failed')")
+    count("SELECT COUNT(*) AS count FROM `user` u JOIN member m ON m.UserID = u.UserID WHERE LOWER(u.Status) = 'active'"),
+    count("SELECT COUNT(*) AS count FROM subscription WHERE LOWER(Status) = 'active'"),
+    count("SELECT COUNT(*) AS count FROM session WHERE LOWER(Status) = 'scheduled'"),
+    count("SELECT COUNT(*) AS count FROM payment WHERE LOWER(PaymentStatus) IN ('pending', 'failed')")
   ]);
 
   res.json({ activeMembers, activeSubscriptions, scheduledSessions, openPayments });

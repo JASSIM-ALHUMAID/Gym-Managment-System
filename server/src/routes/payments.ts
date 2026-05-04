@@ -11,12 +11,20 @@ paymentsRouter.get('/', asyncHandler(async (req, res) => {
   if (user.role === 'member') {
     if (!user.member_id) throw new HttpError(403, 'Member profile is required');
     const [rows] = await pool.query(
-      `SELECT pay.*, s.subscription_id, s.status AS subscription_status, p.plan_id, p.plan_name
-         FROM payments pay
-         JOIN subscriptions s ON s.subscription_id = pay.subscription_id
-         JOIN membership_plans p ON p.plan_id = s.plan_id
-        WHERE s.member_id = ?
-        ORDER BY pay.payment_date DESC`,
+      `SELECT pay.PaymentID AS payment_id,
+              pay.SubscriptionID AS subscription_id,
+              pay.Amount AS amount,
+              pay.PaymentDate AS payment_date,
+              pay.PaymentMethod AS payment_method,
+              LOWER(pay.PaymentStatus) AS payment_status,
+              LOWER(s.Status) AS subscription_status,
+              p.PlanID AS plan_id,
+              p.PlanName AS plan_name
+         FROM payment pay
+         JOIN subscription s ON s.SubscriptionID = pay.SubscriptionID
+         JOIN membershipplan p ON p.PlanID = s.PlanID
+        WHERE s.MemberUserID = ?
+        ORDER BY pay.PaymentDate DESC`,
       [user.member_id]
     );
     res.json({ payments: rows });
@@ -25,14 +33,24 @@ paymentsRouter.get('/', asyncHandler(async (req, res) => {
 
   requireRole(user, ['admin']);
   const [rows] = await pool.query(`
-    SELECT pay.*, s.subscription_id, s.status AS subscription_status,
-           p.plan_id, p.plan_name, m.member_id, u.full_name AS member_name, u.email AS member_email
-      FROM payments pay
-      JOIN subscriptions s ON s.subscription_id = pay.subscription_id
-      JOIN membership_plans p ON p.plan_id = s.plan_id
-      JOIN members m ON m.member_id = s.member_id
-      JOIN users u ON u.user_id = m.user_id
-     ORDER BY pay.payment_date DESC
+    SELECT pay.PaymentID AS payment_id,
+           pay.SubscriptionID AS subscription_id,
+           pay.Amount AS amount,
+           pay.PaymentDate AS payment_date,
+           pay.PaymentMethod AS payment_method,
+           LOWER(pay.PaymentStatus) AS payment_status,
+           LOWER(s.Status) AS subscription_status,
+           p.PlanID AS plan_id,
+           p.PlanName AS plan_name,
+           m.UserID AS member_id,
+           u.FullName AS member_name,
+           u.Email AS member_email
+      FROM payment pay
+      JOIN subscription s ON s.SubscriptionID = pay.SubscriptionID
+      JOIN membershipplan p ON p.PlanID = s.PlanID
+      JOIN member m ON m.UserID = s.MemberUserID
+      JOIN \`user\` u ON u.UserID = m.UserID
+     ORDER BY pay.PaymentDate DESC
   `);
 
   res.json({ payments: rows });

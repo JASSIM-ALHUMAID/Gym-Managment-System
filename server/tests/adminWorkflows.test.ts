@@ -31,12 +31,22 @@ vi.mock('../src/auth.js', () => ({
 
 const { sessionsRouter } = await import('../src/routes/sessions.js');
 const { subscriptionsRouter } = await import('../src/routes/subscriptions.js');
+const { membersRouter } = await import('../src/routes/members.js');
+const { trainersRouter } = await import('../src/routes/trainers.js');
+const { plansRouter } = await import('../src/routes/plans.js');
+const { paymentsRouter } = await import('../src/routes/payments.js');
+const { dashboardRouter } = await import('../src/routes/dashboard.js');
 
 function createApp() {
   const app = express();
   app.use(express.json());
   app.use('/api/sessions', sessionsRouter);
   app.use('/api/subscriptions', subscriptionsRouter);
+  app.use('/api/members', membersRouter);
+  app.use('/api/trainers', trainersRouter);
+  app.use('/api/plans', plansRouter);
+  app.use('/api/payments', paymentsRouter);
+  app.use('/api/dashboard', dashboardRouter);
   app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     sendError(error, res);
   });
@@ -147,5 +157,174 @@ describe('admin workflow routes', () => {
     expect(response.status).toBe(200);
     expect(response.body.subscription).toEqual({ subscription_id: 7, status: 'cancelled' });
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('cancelled_at = CURRENT_TIMESTAMP'), [7]);
+  });
+
+  it('lists members from gym schema with snake case aliases', async () => {
+    mocks.pool.query.mockResolvedValueOnce([[{
+      member_id: 2,
+      gender: 'Female',
+      join_date: '2026-01-06',
+      user_id: 2,
+      full_name: 'Member Two',
+      email: 'member@example.com',
+      phone: '555-0102',
+      status: 'active'
+    }]]);
+
+    const response = await request(createApp()).get('/api/members');
+
+    expect(response.status).toBe(200);
+    expect(response.body.members).toEqual([{
+      member_id: 2,
+      gender: 'Female',
+      join_date: '2026-01-06',
+      user_id: 2,
+      full_name: 'Member Two',
+      email: 'member@example.com',
+      phone: '555-0102',
+      status: 'active'
+    }]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('m.UserID AS member_id'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('FROM member m'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('JOIN `user` u ON u.UserID = m.UserID'));
+  });
+
+  it('lists trainers from gym schema and hides contact fields from members', async () => {
+    mocks.requireDemoUser.mockResolvedValueOnce({ user_id: 2, username: 'member1', role: 'member', full_name: 'Member One', email: null, status: 'active', member_id: 2 });
+    mocks.pool.query.mockResolvedValueOnce([[{
+      trainer_id: 3,
+      specialty: 'Strength Training',
+      hire_date: '2025-12-01',
+      user_id: 3,
+      full_name: 'Trainer Three',
+      email: 'trainer@example.com',
+      phone: '555-0103',
+      status: 'active'
+    }]]);
+
+    const response = await request(createApp()).get('/api/trainers');
+
+    expect(response.status).toBe(200);
+    expect(response.body.trainers).toEqual([{
+      trainer_id: 3,
+      specialty: 'Strength Training',
+      hire_date: '2025-12-01',
+      user_id: 3,
+      full_name: 'Trainer Three',
+      status: 'active'
+    }]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('t.UserID AS trainer_id'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('FROM trainer t'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('JOIN `user` u ON u.UserID = t.UserID'));
+  });
+
+  it('lists plans from membershipplan with snake case aliases', async () => {
+    mocks.pool.query.mockResolvedValueOnce([[{
+      plan_id: 1,
+      plan_name: 'Monthly Basic',
+      duration_months: 1,
+      price: '150.00',
+      description: 'Basic one-month gym access'
+    }]]);
+
+    const response = await request(createApp()).get('/api/plans');
+
+    expect(response.status).toBe(200);
+    expect(response.body.plans).toEqual([{
+      plan_id: 1,
+      plan_name: 'Monthly Basic',
+      duration_months: 1,
+      price: '150.00',
+      description: 'Basic one-month gym access'
+    }]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('PlanID AS plan_id'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('FROM membershipplan'));
+  });
+
+  it('writes plans through membershipplan CamelCase columns', async () => {
+    mocks.pool.query
+      .mockResolvedValueOnce([{ insertId: 4 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+    const app = createApp();
+    const input = { plan_name: 'Semiannual', duration_months: 6, price: 700, description: 'Six months' };
+
+    const createResponse = await request(app).post('/api/plans').send(input);
+    const updateResponse = await request(app).put('/api/plans/4').send(input);
+    const deleteResponse = await request(app).delete('/api/plans/4');
+
+    expect(createResponse.status).toBe(201);
+    expect(updateResponse.status).toBe(200);
+    expect(deleteResponse.status).toBe(200);
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('INSERT INTO membershipplan (PlanName, DurationMonths, Price, Description)'), ['Semiannual', 6, 700, 'Six months']);
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('UPDATE membershipplan SET PlanName = ?, DurationMonths = ?, Price = ?, Description = ? WHERE PlanID = ?'), ['Semiannual', 6, 700, 'Six months', 4]);
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(3, expect.stringContaining('DELETE FROM membershipplan WHERE PlanID = ?'), [4]);
+  });
+
+  it('lists member payments from gym schema by MemberUserID', async () => {
+    mocks.requireDemoUser.mockResolvedValueOnce({ user_id: 2, username: 'member1', role: 'member', full_name: 'Member One', email: null, status: 'active', member_id: 2 });
+    mocks.pool.query.mockResolvedValueOnce([[{
+      payment_id: 9,
+      subscription_id: 7,
+      amount: '150.00',
+      payment_date: '2026-01-05',
+      payment_method: 'Card',
+      payment_status: 'paid',
+      subscription_status: 'active',
+      plan_id: 1,
+      plan_name: 'Monthly Basic'
+    }]]);
+
+    const response = await request(createApp()).get('/api/payments');
+
+    expect(response.status).toBe(200);
+    expect(response.body.payments[0]).toMatchObject({ payment_id: 9, subscription_id: 7, payment_status: 'paid', subscription_status: 'active', plan_id: 1 });
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('pay.PaymentID AS payment_id'), [2]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('FROM payment pay'), [2]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('WHERE s.MemberUserID = ?'), [2]);
+  });
+
+  it('lists admin payments from gym schema with member details', async () => {
+    mocks.pool.query.mockResolvedValueOnce([[{
+      payment_id: 9,
+      subscription_id: 7,
+      amount: '150.00',
+      payment_date: '2026-01-05',
+      payment_method: 'Card',
+      payment_status: 'paid',
+      subscription_status: 'active',
+      plan_id: 1,
+      plan_name: 'Monthly Basic',
+      member_id: 2,
+      member_name: 'Member Two',
+      member_email: 'member@example.com'
+    }]]);
+
+    const response = await request(createApp()).get('/api/payments');
+
+    expect(response.status).toBe(200);
+    expect(response.body.payments[0]).toMatchObject({ payment_id: 9, member_id: 2, member_name: 'Member Two', member_email: 'member@example.com' });
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('m.UserID AS member_id'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('JOIN subscription s ON s.SubscriptionID = pay.SubscriptionID'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('JOIN `user` u ON u.UserID = m.UserID'));
+  });
+
+  it('counts dashboard metrics from gym schema tables and CamelCase statuses', async () => {
+    mocks.pool.query
+      .mockResolvedValueOnce([[{ count: 2 }]])
+      .mockResolvedValueOnce([[{ count: 3 }]])
+      .mockResolvedValueOnce([[{ count: 4 }]])
+      .mockResolvedValueOnce([[{ count: 5 }]]);
+
+    const response = await request(createApp()).get('/api/dashboard');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ activeMembers: 2, activeSubscriptions: 3, scheduledSessions: 4, openPayments: 5 });
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('FROM `user` u'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('JOIN member m ON m.UserID = u.UserID'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM subscription'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(3, expect.stringContaining('FROM session'));
+    expect(mocks.pool.query).toHaveBeenNthCalledWith(4, expect.stringContaining('FROM payment'));
   });
 });

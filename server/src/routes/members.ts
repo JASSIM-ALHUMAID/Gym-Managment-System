@@ -10,11 +10,17 @@ membersRouter.get('/', asyncHandler(async (req, res) => {
   requireRole(user, ['admin']);
 
   const [rows] = await pool.query(`
-    SELECT m.member_id, m.gender, m.join_date,
-           u.user_id, u.full_name, u.email, u.phone, u.status
-      FROM members m
-      JOIN users u ON u.user_id = m.user_id
-     ORDER BY m.member_id
+    SELECT m.UserID AS member_id,
+           m.Gender AS gender,
+           m.JoinDate AS join_date,
+           u.UserID AS user_id,
+           u.FullName AS full_name,
+           u.Email AS email,
+           u.Phone AS phone,
+           LOWER(u.Status) AS status
+      FROM member m
+      JOIN \`user\` u ON u.UserID = m.UserID
+     ORDER BY m.UserID
   `);
 
   res.json({ members: rows });

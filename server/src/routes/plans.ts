@@ -41,7 +41,13 @@ export const plansRouter = Router();
 plansRouter.get('/', asyncHandler(async (req, res) => {
   await requireDemoUser(req);
 
-  const [rows] = await pool.query('SELECT plan_id, plan_name, duration_months, price, description FROM membership_plans ORDER BY plan_id');
+  const [rows] = await pool.query(`SELECT PlanID AS plan_id,
+       PlanName AS plan_name,
+       DurationMonths AS duration_months,
+       Price AS price,
+       Description AS description
+  FROM membershipplan
+ ORDER BY PlanID`);
   res.json({ plans: rows });
 }));
 
@@ -53,7 +59,7 @@ plansRouter.post('/', asyncHandler(async (req, res) => {
   let result: ResultSetHeader;
   try {
     [result] = await pool.query<ResultSetHeader>(
-      'INSERT INTO membership_plans (plan_name, duration_months, price, description) VALUES (?, ?, ?, ?)',
+      'INSERT INTO membershipplan (PlanName, DurationMonths, Price, Description) VALUES (?, ?, ?, ?)',
       [input.plan_name, input.duration_months, input.price, input.description]
     );
   } catch (error) {
@@ -74,7 +80,7 @@ plansRouter.put('/:id', asyncHandler(async (req, res) => {
   let result: ResultSetHeader;
   try {
     [result] = await pool.query<ResultSetHeader>(
-      'UPDATE membership_plans SET plan_name = ?, duration_months = ?, price = ?, description = ? WHERE plan_id = ?',
+      'UPDATE membershipplan SET PlanName = ?, DurationMonths = ?, Price = ?, Description = ? WHERE PlanID = ?',
       [input.plan_name, input.duration_months, input.price, input.description, planId]
     );
   } catch (error) {
@@ -94,7 +100,7 @@ plansRouter.delete('/:id', asyncHandler(async (req, res) => {
 
   let result: ResultSetHeader;
   try {
-    [result] = await pool.query<ResultSetHeader>('DELETE FROM membership_plans WHERE plan_id = ?', [planId]);
+    [result] = await pool.query<ResultSetHeader>('DELETE FROM membershipplan WHERE PlanID = ?', [planId]);
   } catch (error) {
     if (isReferencedPlanError(error)) throw new HttpError(409, 'Plan cannot be deleted because subscriptions reference it');
     throw error;
