@@ -223,6 +223,10 @@ export default function TrainerDashboard() {
     }
   }
 
+  const scheduledSessions = sessions.filter((session) => session.status === 'scheduled');
+  const completedSessions = sessions.filter((session) => session.status === 'completed');
+  const selectedSession = sessions.find((session) => session.session_id === selectedSessionId);
+
   return (
     <div className="dashboard-stack">
       <section className="page-hero">
@@ -233,6 +237,25 @@ export default function TrainerDashboard() {
         </div>
       </section>
 
+      <section className="trainer-command-grid" aria-label="Trainer command summary">
+        <article className="status-card">
+          <p className="eyebrow">Active protocols</p>
+          <h2>{scheduledSessions.length}</h2>
+          <p className="muted">Scheduled sessions assigned to your trainer profile.</p>
+        </article>
+        <article className="status-card">
+          <p className="eyebrow">Attendance queue</p>
+          <h2>{attendance.length}</h2>
+          <p className="muted">Booked members loaded for the selected session.</p>
+        </article>
+        <article className="status-card trainer-focus-card">
+          <p className="eyebrow">Selected session</p>
+          <h2>{selectedSession ? selectedSession.session_type : 'Standby'}</h2>
+          <p className="muted">{selectedSession ? `${formatDate(selectedSession.session_date)} at ${formatTime(selectedSession.start_time)} · ${selectedSession.location}` : 'Select a session to begin attendance control.'}</p>
+          <span className="pill">{completedSessions.length} completed</span>
+        </article>
+      </section>
+
       <section className="tabs" aria-label="Trainer sections">
         <button type="button" className={activeTab === 'upcoming' ? 'active' : ''} onClick={() => setActiveTab('upcoming')}>Upcoming</button>
         <button type="button" className={activeTab === 'completed' ? 'active' : ''} onClick={() => setActiveTab('completed')}>Completed</button>
@@ -241,11 +264,11 @@ export default function TrainerDashboard() {
       </section>
 
       {activeTab === 'upcoming' ? (
-        <ResourceTable title="Upcoming assigned sessions" rows={sessions.filter((session) => session.status === 'scheduled')} columns={sessionColumns} loading={sessionsLoading} error={error && !selectedSessionId ? error : null} getRowKey={(session) => session.session_id} />
+        <ResourceTable title="Upcoming assigned sessions" rows={scheduledSessions} columns={sessionColumns} loading={sessionsLoading} error={error && !selectedSessionId ? error : null} getRowKey={(session) => session.session_id} />
       ) : null}
 
       {activeTab === 'completed' ? (
-        <ResourceTable title="Completed assigned sessions" rows={sessions.filter((session) => session.status === 'completed')} columns={sessionColumns} loading={sessionsLoading} error={error && !selectedSessionId ? error : null} getRowKey={(session) => session.session_id} />
+        <ResourceTable title="Completed assigned sessions" rows={completedSessions} columns={sessionColumns} loading={sessionsLoading} error={error && !selectedSessionId ? error : null} getRowKey={(session) => session.session_id} />
       ) : null}
 
       {activeTab === 'history' ? (

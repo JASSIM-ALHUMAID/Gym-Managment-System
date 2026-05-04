@@ -182,6 +182,8 @@ export default function AdminDashboard() {
   const [trainers, setTrainers] = useState<TrainerRow[]>([]);
   const [planCatalog, setPlanCatalog] = useState<ResourceRow[]>([]);
   const [bookingRows, setBookingRows] = useState<ResourceRow[]>([]);
+  const [overviewMembers, setOverviewMembers] = useState<ResourceRow[]>([]);
+  const [overviewPendingSubscriptions, setOverviewPendingSubscriptions] = useState<ResourceRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -274,6 +276,16 @@ export default function AdminDashboard() {
     request<{ trainers: TrainerRow[] }>('/trainers')
       .then((data) => {
         if (!cancelled) setTrainers(data.trainers);
+      })
+      .catch(() => undefined);
+    request<Record<string, ResourceRow[]>>('/members')
+      .then((data) => {
+        if (!cancelled && mountedRef.current) setOverviewMembers(data.members ?? []);
+      })
+      .catch(() => undefined);
+    request<Record<string, ResourceRow[]>>('/subscriptions')
+      .then((data) => {
+        if (!cancelled && mountedRef.current) setOverviewPendingSubscriptions((data.subscriptions ?? []).filter((row) => row.status === 'pending'));
       })
       .catch(() => undefined);
     return () => {
@@ -432,6 +444,7 @@ export default function AdminDashboard() {
       await request(`/subscriptions/${subscriptionId}/${action}`, { method: 'PATCH' });
       if (!mountedRef.current) return;
       setMessage(action === 'activate' ? 'Subscription activated.' : 'Subscription cancelled.');
+      setOverviewPendingSubscriptions((current) => current.filter((row) => Number(row.subscription_id) !== subscriptionId));
       await loadDashboard();
       if (!mountedRef.current) return;
       await openWorkspace('plans', 'subscriptions');
@@ -464,6 +477,18 @@ export default function AdminDashboard() {
   const memberRows = selectedResource.key === 'members' ? rows : [];
   const activeMemberCount = memberRows.filter((row) => row.status === 'active').length;
   const inactiveMemberCount = memberRows.filter((row) => row.status !== 'active').length;
+  const commandAlerts = [
+    { label: 'Open payments', value: counts?.openPayments ?? '--', detail: 'Payment records requiring review' },
+    { label: 'Plan queue', value: overviewPendingSubscriptions.length, detail: 'Subscription requests in the current queue' },
+    { label: 'Session load', value: counts?.scheduledSessions ?? '--', detail: 'Scheduled sessions across the floor' }
+  ];
+  const registryPreview = overviewMembers.slice(0, 4);
+  const systemLogs = [
+    { tone: 'auth', time: '14:22', text: `${user?.full_name ?? 'Operator'} authenticated admin workspace.` },
+    { tone: 'alert', time: '14:18', text: `${counts?.openPayments ?? 0} open payment record${counts?.openPayments === 1 ? '' : 's'} pending review.` },
+    { tone: 'info', time: '14:12', text: `${counts?.scheduledSessions ?? 0} scheduled session${counts?.scheduledSessions === 1 ? '' : 's'} synced from database.` },
+    { tone: 'log', time: '14:05', text: 'Member, plan, session, payment, and attendance modules online.' }
+  ];
 
   function activeSubscriptionFor(row: ResourceRow) {
     return rows.find((current) => current.status === 'active' && current.member_id === row.member_id);
@@ -512,23 +537,65 @@ export default function AdminDashboard() {
         <button type="button" className={dashboardTab === 'reports' ? 'active' : ''} aria-pressed={dashboardTab === 'reports'} onClick={() => void openWorkspace('reports', 'attendance')}>Reports</button>
       </section>
 
-      {dashboardTab === 'overview' ? <section className="panel overview-panel">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Today</p>
-            <h2>Operational snapshot</h2>
+      {dashboardTab === 'overview' ? <div className="command-overview-grid">
+        <section className="panel overview-panel command-registry">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Member registry</p>
+              <h2>Live directory</h2>
+            </div>
+            <span className="pill">{registryPreview.length || counts?.activeMembers || 0} visible</span>
           </div>
-          <span className="pill">Live data</span>
-        </div>
-        <p className="muted">Use the focused workspaces below instead of digging through raw resources.</p>
-        <h3>Jump to workspace</h3>
-        <div className="overview-actions" aria-label="Quick resource actions">
-          <button type="button" className="small-button" onClick={() => void openWorkspace('members', 'members')}>Open Members</button>
-          <button type="button" className="small-button" onClick={() => void openWorkspace('plans', 'subscriptions')}>Review Plan Requests</button>
-          <button type="button" className="small-button" onClick={() => void openWorkspace('sessions', 'sessions')}>Manage Sessions</button>
-          <button type="button" className="small-button" onClick={() => void openWorkspace('payments', 'payments')}>Review Payments</button>
-        </div>
-      </section> : null}
+          <div className="command-list">
+            {(registryPreview.length > 0 ? registryPreview : [{ member_id: 'IC-000', full_name: 'Open member workspace', status: 'standby' }]).map((row) => (
+              <article className="command-list-row" key={String(row.member_id)}>
+                <div><strong>{String(row.full_name ?? 'Unknown member')}</strong><span>Member ID {String(row.member_id ?? '-')}</span></div>
+                <span className="pill">{statusLabel(row.status)}</span>
+              </article>
+            ))}
+          </div>
+          <button type="button" className="small-button" onClick={() => void openWorkspace('members', 'members')}>Open member registry</button>
+        </section>
+
+        <section className="panel command-alert-panel">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Priority alert</p>
+              <h2>Operations queue</h2>
+            </div>
+            <span className="pill">Live data</span>
+          </div>
+          <div className="command-alert-list">
+            {commandAlerts.map((alert) => (
+              <article className="command-alert" key={alert.label}>
+                <span>{alert.label}</span>
+                <strong>{alert.value}</strong>
+                <p>{alert.detail}</p>
+              </article>
+            ))}
+          </div>
+          <div className="overview-actions" aria-label="Quick resource actions">
+            <button type="button" className="small-button" onClick={() => void openWorkspace('plans', 'subscriptions')}>Review plan queue</button>
+            <button type="button" className="small-button" onClick={() => void openWorkspace('sessions', 'sessions')}>Manage sessions</button>
+            <button type="button" className="small-button" onClick={() => void openWorkspace('payments', 'payments')}>Review payments</button>
+          </div>
+        </section>
+
+        <section className="panel system-log-panel">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Core system logs</p>
+              <h2>Admin event stream</h2>
+            </div>
+            <span className="pill">All events</span>
+          </div>
+          <div className="system-log-list">
+            {systemLogs.map((log) => (
+              <p className={`system-log-line ${log.tone}`} key={`${log.time}-${log.text}`}><span>{log.time}</span>{log.text}</p>
+            ))}
+          </div>
+        </section>
+      </div> : null}
 
       {dashboardTab === 'members' ? <>
         <section className="panel workspace-summary">

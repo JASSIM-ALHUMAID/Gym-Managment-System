@@ -41,26 +41,34 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to main content</a>
-      <header className="top-navbar">
+      <aside className="command-sidebar" aria-label="Command navigation">
         <div className="brand-block">
-          <p className="eyebrow">Gym Management</p>
-          <h2>System</h2>
+          <p className="eyebrow">Iron Command</p>
+          <h2>Gym Control</h2>
+          <span>Operator #{user?.user_id ?? '----'}</span>
         </div>
         <nav className="top-nav-tabs" aria-label="Primary navigation">
           {visibleLinks.map((link) => (
             <NavLink key={link.to} to={link.to}>{link.label}</NavLink>
           ))}
         </nav>
+        <button className="secondary sidebar-logout" type="button" onClick={logout}>Log session</button>
+      </aside>
+      <div className="command-main">
+        <header className="top-navbar">
+          <div className="command-status" aria-live="polite"><span aria-hidden="true" /> System operational</div>
+          <div className="command-search" aria-label="Database query placeholder">Query database...</div>
+          <button className="secondary system-log-button" type="button" disabled title="System log view is visual only">System_log</button>
         <div className="user-menu">
           <div className="avatar" aria-hidden="true">{initials}</div>
           <div className="user-meta">
             <strong>{user?.full_name}</strong>
             <span>{user?.role}</span>
           </div>
-          <button className="secondary" type="button" onClick={logout}>Log out</button>
         </div>
-      </header>
-      <main id="main-content" className="dashboard-content">{children}</main>
+        </header>
+        <main id="main-content" className="dashboard-content">{children}</main>
+      </div>
     </div>
   );
 }

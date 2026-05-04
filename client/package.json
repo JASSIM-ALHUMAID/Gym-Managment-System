@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test:ui-structure": "node scripts/assert-command-layout.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },

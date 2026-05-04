@@ -235,6 +235,8 @@ export default function MemberDashboard() {
   const hasActiveSubscription = subscriptions.some((subscription) => subscription.status === 'active');
   const hasPendingSubscription = subscriptions.some((subscription) => subscription.status === 'pending');
   const isPlanRequestPending = pendingPlanIds.size > 0;
+  const activeBookings = bookings.filter((booking) => booking.booking_status === 'booked');
+  const nextSession = sessions[0];
   const sessionColumns: ResourceColumn<SessionRow>[] = [
     { key: 'session_type', label: 'Type' },
     { key: 'trainer_name', label: 'Trainer' },
@@ -306,7 +308,7 @@ export default function MemberDashboard() {
         <button type="button" className={activeTab === 'bookings' ? 'active' : ''} aria-pressed={activeTab === 'bookings'} onClick={() => setActiveTab('bookings')}>Bookings</button>
       </section>
 
-      {activeTab === 'overview' ? <section className="status-card-grid" aria-label="Membership status summary">
+      {activeTab === 'overview' ? <section className="member-command-grid" aria-label="Membership status summary">
         <article className="status-card">
           <p className="eyebrow">Current active plan</p>
           <h2>{activeSubscription ? activeSubscription.plan_name : 'No active plan'}</h2>
@@ -324,6 +326,12 @@ export default function MemberDashboard() {
           <h2>{latestPayment ? `${Number(latestPayment.amount).toFixed(2)} SAR` : 'No payment yet'}</h2>
           <p className="muted">{latestPayment ? `${latestPayment.plan_name} on ${formatDate(latestPayment.payment_date)}` : 'Payments appear here after admin records them.'}</p>
           <span className="pill">{latestPayment ? latestPayment.payment_status : 'None'}</span>
+        </article>
+        <article className="status-card member-session-card">
+          <p className="eyebrow">Session access</p>
+          <h2>{activeBookings.length} booked</h2>
+          <p className="muted">{nextSession ? `Next available: ${nextSession.session_type} with ${nextSession.trainer_name}.` : 'Scheduled sessions will appear when the floor publishes them.'}</p>
+          <span className="pill">{hasActiveSubscription ? 'Booking enabled' : 'Plan required'}</span>
         </article>
       </section> : null}
 
