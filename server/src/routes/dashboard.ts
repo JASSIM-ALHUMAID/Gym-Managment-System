@@ -30,5 +30,13 @@ dashboardRouter.get('/', asyncHandler(async (req, res) => {
     count('SELECT COUNT(*) AS count FROM attendance')
   ]);
 
-  res.json({ users, members, trainers, staff, plans, subscriptions, payments, sessions, bookings, attendance });
+  const counts = { users, members, trainers, staff, plans, subscriptions, payments, sessions, bookings, attendance };
+
+  res.json({
+    activeMembers: members,
+    activeSubscriptions: subscriptions,
+    scheduledSessions: sessions,
+    openPayments: payments,
+    counts
+  });
 }));

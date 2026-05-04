@@ -327,16 +327,22 @@ describe('admin workflow routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
-      users: 1,
-      members: 2,
-      trainers: 3,
-      staff: 4,
-      plans: 5,
-      subscriptions: 6,
-      payments: 7,
-      sessions: 8,
-      bookings: 9,
-      attendance: 10
+      activeMembers: 2,
+      activeSubscriptions: 6,
+      scheduledSessions: 8,
+      openPayments: 7,
+      counts: {
+        users: 1,
+        members: 2,
+        trainers: 3,
+        staff: 4,
+        plans: 5,
+        subscriptions: 6,
+        payments: 7,
+        sessions: 8,
+        bookings: 9,
+        attendance: 10
+      }
     });
     expect(mocks.pool.query).toHaveBeenNthCalledWith(1, expect.stringContaining('FROM `user`'));
     expect(mocks.pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM member'));
