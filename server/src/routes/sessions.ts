@@ -8,9 +8,6 @@ type SessionInput = {
   trainer_id: number;
   session_title: string;
   session_type: string;
-  description: string | null;
-  location: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
   session_date: string;
   start_time: string;
   end_time: string;
@@ -21,7 +18,6 @@ type CountRow = { count: number } & RowDataPacket;
 type SessionBookedCountRow = { session_id: number; count: number } & RowDataPacket;
 
 const sessionStatuses = ['scheduled', 'completed', 'cancelled'] as const;
-const difficulties = ['beginner', 'intermediate', 'advanced'] as const;
 
 function isValidDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -43,9 +39,6 @@ function parseSessionInput(body: Record<string, unknown>): SessionInput {
   const trainerId = Number(body.trainer_id);
   const sessionType = String(body.session_type ?? '').trim();
   const sessionTitle = String(body.session_title ?? body.session_type ?? '').trim();
-  const description = body.description == null ? null : String(body.description).trim() || null;
-  const location = String(body.location ?? '').trim();
-  const difficulty = String(body.difficulty ?? 'beginner').trim();
   const sessionDate = String(body.session_date ?? '').trim();
   const startTime = String(body.start_time ?? '').trim();
   const endTime = String(body.end_time ?? '').trim();
@@ -54,8 +47,6 @@ function parseSessionInput(body: Record<string, unknown>): SessionInput {
   if (!Number.isInteger(trainerId) || trainerId <= 0) throw new HttpError(400, 'Valid trainer id is required');
   if (!sessionType) throw new HttpError(400, 'Session type is required');
   if (!sessionTitle) throw new HttpError(400, 'Session title is required');
-  if (!location) throw new HttpError(400, 'Location is required');
-  if (!difficulties.includes(difficulty as SessionInput['difficulty'])) throw new HttpError(400, 'Difficulty must be beginner, intermediate, or advanced');
   if (!isValidDate(sessionDate)) throw new HttpError(400, 'Valid session date is required');
   if (!isValidTime(startTime)) throw new HttpError(400, 'Valid start time is required');
   if (!isValidTime(endTime)) throw new HttpError(400, 'Valid end time is required');
@@ -66,9 +57,6 @@ function parseSessionInput(body: Record<string, unknown>): SessionInput {
     trainer_id: trainerId,
     session_title: sessionTitle,
     session_type: sessionType,
-    description,
-    location,
-    difficulty: difficulty as SessionInput['difficulty'],
     session_date: sessionDate,
     start_time: startTime,
     end_time: endTime,

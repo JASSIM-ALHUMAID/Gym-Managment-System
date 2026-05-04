@@ -32,9 +32,6 @@ const emptySessionForm = {
   session_id: '',
   trainer_id: '',
   session_type: '',
-  description: '',
-  location: 'Main Studio',
-  difficulty: 'beginner',
   session_date: '',
   start_time: '',
   end_time: '',
@@ -128,10 +125,9 @@ const baseResources: ResourceConfig[] = [
   ] },
   { key: 'sessions', label: 'Sessions', path: '/sessions', responseKey: 'sessions', columns: [
     { key: 'session_id', label: labelFor('session_id') },
+    { key: 'session_title', label: labelFor('session_title') },
     { key: 'session_type', label: labelFor('session_type') },
     { key: 'trainer_name', label: labelFor('trainer_name') },
-    { key: 'location', label: labelFor('location') },
-    { key: 'difficulty', label: labelFor('difficulty') },
     { key: 'session_date', label: labelFor('session_date'), format: formatDate },
     { key: 'start_time', label: labelFor('start_time'), format: formatTime },
     { key: 'end_time', label: labelFor('end_time'), format: formatTime },
@@ -406,9 +402,6 @@ export default function AdminDashboard() {
       const body = {
         trainer_id: trainerId,
         session_type: sessionForm.session_type,
-        description: sessionForm.description,
-        location: sessionForm.location,
-        difficulty: sessionForm.difficulty,
         session_date: sessionForm.session_date,
         start_time: sessionForm.start_time,
         end_time: sessionForm.end_time,
@@ -708,14 +701,6 @@ export default function AdminDashboard() {
             </select>
             <label htmlFor="sessionType">Session type</label>
             <input id="sessionType" value={sessionForm.session_type} onChange={(event) => setSessionForm((current) => ({ ...current, session_type: event.target.value }))} required />
-            <label htmlFor="sessionLocation">Location</label>
-            <input id="sessionLocation" value={sessionForm.location} onChange={(event) => setSessionForm((current) => ({ ...current, location: event.target.value }))} required />
-            <label htmlFor="sessionDifficulty">Difficulty</label>
-            <select id="sessionDifficulty" value={sessionForm.difficulty} onChange={(event) => setSessionForm((current) => ({ ...current, difficulty: event.target.value }))}>
-              <option value="beginner">Beginner</option>
-              <option value="intermediate">Intermediate</option>
-              <option value="advanced">Advanced</option>
-            </select>
             <label htmlFor="sessionDate">Date</label>
             <input id="sessionDate" type="date" value={sessionForm.session_date} onChange={(event) => setSessionForm((current) => ({ ...current, session_date: event.target.value }))} required />
             <label htmlFor="sessionStart">Start time</label>
@@ -724,8 +709,6 @@ export default function AdminDashboard() {
             <input id="sessionEnd" type="time" value={sessionForm.end_time} onChange={(event) => setSessionForm((current) => ({ ...current, end_time: event.target.value }))} required />
             <label htmlFor="sessionCapacity">Capacity</label>
             <input id="sessionCapacity" type="number" min="1" value={sessionForm.capacity} onChange={(event) => setSessionForm((current) => ({ ...current, capacity: event.target.value }))} required />
-            <label htmlFor="sessionDescription">Description</label>
-            <textarea id="sessionDescription" value={sessionForm.description} onChange={(event) => setSessionForm((current) => ({ ...current, description: event.target.value }))} />
             <button type="submit" disabled={saving}>{sessionForm.session_id ? 'Update session' : 'Create session'}</button>
           </form> : null}
         </section>

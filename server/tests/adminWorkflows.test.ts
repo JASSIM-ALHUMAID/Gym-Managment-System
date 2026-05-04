@@ -74,9 +74,6 @@ describe('admin workflow routes', () => {
       .send({
         trainer_id: 1,
         session_type: 'Boxing Fundamentals',
-        description: 'Technique-focused class for newer boxers',
-        location: 'Studio C',
-        difficulty: 'beginner',
         session_date: '2026-05-01',
         start_time: '09:00:00',
         end_time: '10:00:00',
@@ -113,9 +110,6 @@ describe('admin workflow routes', () => {
         trainer_id: 1,
         session_title: 'Strength Lab',
         session_type: 'Personal Training',
-        description: 'Technique-focused class',
-        location: 'Studio C',
-        difficulty: 'advanced',
         session_date: '2026-05-01',
         start_time: '09:00:00',
         end_time: '10:00:00',
@@ -240,6 +234,7 @@ describe('admin workflow routes', () => {
     mocks.pool.query.mockResolvedValueOnce([[{
       user_id: 2,
       username: 'member2',
+      role: 'member',
       full_name: 'Member Two',
       email: 'member@example.com',
       phone: '555-0102',
@@ -253,6 +248,7 @@ describe('admin workflow routes', () => {
     expect(response.body.users).toEqual([{
       user_id: 2,
       username: 'member2',
+      role: 'member',
       full_name: 'Member Two',
       email: 'member@example.com',
       phone: '555-0102',
@@ -260,7 +256,13 @@ describe('admin workflow routes', () => {
       created_at: '2026-01-06 08:00:00'
     }]);
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('u.UserID AS user_id'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining("WHEN st.UserID IS NOT NULL THEN 'admin'"));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining("WHEN t.UserID IS NOT NULL THEN 'trainer'"));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining("WHEN m.UserID IS NOT NULL THEN 'member'"));
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('FROM `user` u'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN staff st ON st.UserID = u.UserID'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN trainer t ON t.UserID = u.UserID'));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('LEFT JOIN member m ON m.UserID = u.UserID'));
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.not.stringContaining('FROM users'));
   });
 

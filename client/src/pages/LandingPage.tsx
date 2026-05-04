@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 
 const features = [
   { title: 'Membership Plans', text: 'Create plans, review subscription requests, and keep member access organized.' },
-  { title: 'Class Scheduling', text: 'Coordinate trainers, capacity, locations, difficulty, and daily class operations.' },
+  { title: 'Class Scheduling', text: 'Coordinate trainers, capacity, session types, and daily class operations.' },
   { title: 'Member Bookings', text: 'Let members reserve classes while the system protects capacity and membership rules.' },
   { title: 'Attendance Tracking', text: 'Trainers mark attendance and admins review the operational history.' }
 ];
