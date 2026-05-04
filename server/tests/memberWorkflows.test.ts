@@ -54,10 +54,10 @@ describe('member subscription and booking workflows', () => {
 
   it('lets members request a pending subscription plan', async () => {
     mocks.connection.query.mockImplementation(async (sql: string) => {
-      if (sql.includes('SELECT plan_id, duration_months')) return [[{ plan_id: 2, duration_months: 3 }]];
-      if (sql.includes('SELECT member_id FROM members')) return [[{ member_id: 1 }]];
+      if (sql.includes('SELECT PlanID AS plan_id, DurationMonths AS duration_months')) return [[{ plan_id: 2, duration_months: 3 }]];
+      if (sql.includes('FROM member')) return [[{ member_id: 1 }]];
       if (sql.includes('COUNT(*) AS count')) return [[{ count: 0 }]];
-      if (sql.includes('INSERT INTO subscriptions')) return [{ insertId: 14 }];
+      if (sql.includes('INSERT INTO subscription')) return [{ insertId: 14 }];
       return [[]];
     });
     mocks.pool.query
@@ -73,15 +73,15 @@ describe('member subscription and booking workflows', () => {
     expect(response.body.subscription).toMatchObject({ subscription_id: 14, plan_id: 2, status: 'pending' });
     expect(mocks.pool.getConnection).toHaveBeenCalledOnce();
     expect(mocks.connection.beginTransaction).toHaveBeenCalledOnce();
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('SELECT plan_id, duration_months'), [2]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('SELECT member_id FROM members'), [1]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('member_id = ?'), [1]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('FROM membershipplan'), [2]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM member'), [1]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('UserID = ?'), [1]);
     expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FOR UPDATE'), [1]);
     expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining('COUNT(*) AS count'), [1]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining('member_id = ?'), [1]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining("status = 'pending'"), [1]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining('INSERT INTO subscriptions'), [1, 2, expect.any(String), expect.any(String)]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining("'pending'"), [1, 2, expect.any(String), expect.any(String)]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining('MemberUserID = ?'), [1]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining("Status = 'Pending'"), [1]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining('INSERT INTO subscription'), [1, 2, expect.any(String), expect.any(String)]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining("'Pending'"), [1, 2, expect.any(String), expect.any(String)]);
     expect(mocks.connection.commit).toHaveBeenCalledOnce();
     expect(mocks.connection.rollback).not.toHaveBeenCalled();
     expect(mocks.connection.release).toHaveBeenCalledOnce();
@@ -89,8 +89,8 @@ describe('member subscription and booking workflows', () => {
 
   it('rejects a second pending subscription request', async () => {
     mocks.connection.query.mockImplementation(async (sql: string) => {
-      if (sql.includes('SELECT plan_id, duration_months')) return [[{ plan_id: 2, duration_months: 3 }]];
-      if (sql.includes('SELECT member_id FROM members')) return [[{ member_id: 1 }]];
+      if (sql.includes('SELECT PlanID AS plan_id, DurationMonths AS duration_months')) return [[{ plan_id: 2, duration_months: 3 }]];
+      if (sql.includes('FROM member')) return [[{ member_id: 1 }]];
       if (sql.includes('COUNT(*) AS count')) return [[{ count: 1 }]];
       return [[]];
     });
@@ -106,10 +106,10 @@ describe('member subscription and booking workflows', () => {
     expect(response.body).toEqual({ error: 'You already have a pending subscription request' });
     expect(mocks.pool.getConnection).toHaveBeenCalledOnce();
     expect(mocks.connection.beginTransaction).toHaveBeenCalledOnce();
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('SELECT member_id FROM members'), [1]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM member'), [1]);
     expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FOR UPDATE'), [1]);
     expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining('COUNT(*) AS count'), [1]);
-    expect(mocks.connection.query).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO subscriptions'), expect.any(Array));
+    expect(mocks.connection.query).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO subscription'), expect.any(Array));
     expect(mocks.connection.commit).not.toHaveBeenCalled();
     expect(mocks.connection.rollback).toHaveBeenCalledOnce();
     expect(mocks.connection.release).toHaveBeenCalledOnce();
@@ -117,10 +117,10 @@ describe('member subscription and booking workflows', () => {
 
   it('returns a conflict when a pending subscription already exists at insert time', async () => {
     mocks.connection.query.mockImplementation(async (sql: string) => {
-      if (sql.includes('SELECT plan_id, duration_months')) return [[{ plan_id: 2, duration_months: 3 }]];
-      if (sql.includes('SELECT member_id FROM members')) return [[{ member_id: 1 }]];
+      if (sql.includes('SELECT PlanID AS plan_id, DurationMonths AS duration_months')) return [[{ plan_id: 2, duration_months: 3 }]];
+      if (sql.includes('FROM member')) return [[{ member_id: 1 }]];
       if (sql.includes('COUNT(*) AS count')) return [[{ count: 0 }]];
-      if (sql.includes('INSERT INTO subscriptions')) throw Object.assign(new Error('Duplicate entry'), { code: 'ER_DUP_ENTRY' });
+      if (sql.includes('INSERT INTO subscription')) throw Object.assign(new Error('Duplicate entry'), { code: 'ER_DUP_ENTRY' });
       return [[]];
     });
 

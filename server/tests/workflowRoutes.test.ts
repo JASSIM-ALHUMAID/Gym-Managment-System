@@ -203,7 +203,7 @@ describe('workflow route handlers', () => {
   it('uses the assigned session trainer when attendance submits another trainer', async () => {
     mocks.pool.query
       .mockResolvedValueOnce([[{ trainer_id: 3 }]])
-      .mockResolvedValueOnce([[{ count: 1 }]])
+      .mockResolvedValueOnce([[{ BookingID: 42 }]])
       .mockResolvedValueOnce([{ insertId: 7 }]);
 
     const response = await request(createApp())
@@ -212,6 +212,6 @@ describe('workflow route handlers', () => {
 
     expect(response.status).toBe(201);
     expect(response.body.attendance.marked_by_trainer_id).toBe(3);
-    expect(mocks.pool.query).toHaveBeenLastCalledWith(expect.stringContaining('INSERT INTO attendance'), [20, 10, 3, 'present']);
+    expect(mocks.pool.query).toHaveBeenLastCalledWith(expect.stringContaining('INSERT INTO attendance'), [42, 3, 'Present']);
   });
 });

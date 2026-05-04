@@ -12,6 +12,10 @@ describe('booking workflow rules', () => {
     expect(canBookSession({ status: 'scheduled', capacity: 5, bookedCount: 1, existingBookingStatus: 'booked' })).toBe('Member already booked this session');
   });
 
+  it('rejects duplicate bookings stored with gym schema title case statuses', () => {
+    expect(canBookSession({ status: 'Scheduled', capacity: 5, bookedCount: 1, existingBookingStatus: 'Confirmed' })).toBe('Member already booked this session');
+  });
+
   it('rejects full sessions', () => {
     expect(canBookSession({ status: 'scheduled', capacity: 2, bookedCount: 2 })).toBe('Session is full');
   });

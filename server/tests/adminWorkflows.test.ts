@@ -137,10 +137,10 @@ describe('admin workflow routes', () => {
 
   it('activates pending subscriptions as admin', async () => {
     mocks.connection.query.mockImplementation(async (sql: string) => {
-      if (sql.includes('SELECT') && sql.includes('FROM subscriptions')) return [[{ subscription_id: 7, member_id: 3, status: 'pending' }]];
-      if (sql.includes('SELECT member_id FROM members')) return [[{ member_id: 3 }]];
-      if (sql.includes("status = 'cancelled'")) return [{ affectedRows: 1 }];
-      if (sql.includes('approved_by_user_id')) return [{ affectedRows: 1 }];
+      if (sql.includes('SELECT') && sql.includes('FROM subscription')) return [[{ subscription_id: 7, member_id: 3, status: 'pending' }]];
+      if (sql.includes('FROM member')) return [[{ member_id: 3 }]];
+      if (sql.includes("Status = 'Cancelled'")) return [{ affectedRows: 1 }];
+      if (sql.includes("SET Status = 'Active'")) return [{ affectedRows: 1 }];
       return [[]];
     });
 
@@ -152,25 +152,25 @@ describe('admin workflow routes', () => {
     expect(response.body.subscription).toEqual({ subscription_id: 7, status: 'active' });
     expect(mocks.pool.getConnection).toHaveBeenCalledOnce();
     expect(mocks.connection.beginTransaction).toHaveBeenCalledOnce();
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('member_id'), [7]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('MemberUserID AS member_id'), [7]);
     expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('FOR UPDATE'), [7]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('SELECT member_id FROM members'), [3]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM member'), [3]);
     expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FOR UPDATE'), [3]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining("status = 'cancelled'"), [3, 7]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining("status = 'active'"), [3, 7]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining('approved_by_user_id'), [1, 7]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining("status = 'active'"), [1, 7]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining("status = 'pending'"), [1, 7]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining("Status = 'Cancelled'"), [3, 7]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining("Status = 'Active'"), [3, 7]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining("SET Status = 'Active'"), [7]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining("Status = 'Pending'"), [7]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.not.stringContaining('approved_by_user_id'), [7]);
     expect(mocks.connection.commit).toHaveBeenCalledOnce();
     expect(mocks.connection.release).toHaveBeenCalledOnce();
   });
 
   it('rejects activation when the selected subscription is no longer pending', async () => {
     mocks.connection.query.mockImplementation(async (sql: string) => {
-      if (sql.includes('SELECT') && sql.includes('FROM subscriptions')) return [[{ subscription_id: 7, member_id: 3, status: 'pending' }]];
-      if (sql.includes('SELECT member_id FROM members')) return [[{ member_id: 3 }]];
-      if (sql.includes("status = 'cancelled'")) return [{ affectedRows: 1 }];
-      if (sql.includes('approved_by_user_id')) return [{ affectedRows: 0 }];
+      if (sql.includes('SELECT') && sql.includes('FROM subscription')) return [[{ subscription_id: 7, member_id: 3, status: 'pending' }]];
+      if (sql.includes('FROM member')) return [[{ member_id: 3 }]];
+      if (sql.includes("Status = 'Cancelled'")) return [{ affectedRows: 1 }];
+      if (sql.includes("SET Status = 'Active'")) return [{ affectedRows: 0 }];
       return [[]];
     });
 
@@ -183,9 +183,9 @@ describe('admin workflow routes', () => {
     expect(mocks.pool.getConnection).toHaveBeenCalledOnce();
     expect(mocks.connection.beginTransaction).toHaveBeenCalledOnce();
     expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('FOR UPDATE'), [7]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('SELECT member_id FROM members'), [3]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM member'), [3]);
     expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FOR UPDATE'), [3]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining("status = 'pending'"), [1, 7]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining("Status = 'Pending'"), [7]);
     expect(mocks.connection.commit).not.toHaveBeenCalled();
     expect(mocks.connection.rollback).toHaveBeenCalledOnce();
     expect(mocks.connection.release).toHaveBeenCalledOnce();
@@ -200,7 +200,8 @@ describe('admin workflow routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.subscription).toEqual({ subscription_id: 7, status: 'cancelled' });
-    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('cancelled_at = CURRENT_TIMESTAMP'), [7]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining("Status = 'Cancelled'"), [7]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.not.stringContaining('cancelled_at'), [7]);
   });
 
   it('lists members from gym schema with snake case aliases', async () => {
