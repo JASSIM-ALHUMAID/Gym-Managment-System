@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import type { DemoUser } from './api';
 import { AuthProvider, useAuth } from './auth';
 import AdminDashboard from './pages/AdminDashboard';
@@ -6,18 +6,6 @@ import LandingPage from './pages/LandingPage';
 import LoginPage, { dashboardPathFor } from './pages/LoginPage';
 import MemberDashboard from './pages/MemberDashboard';
 import TrainerDashboard from './pages/TrainerDashboard';
-
-type DashboardLink = {
-  to: string;
-  label: string;
-  roles: DemoUser['role'][];
-};
-
-const dashboardLinks: DashboardLink[] = [
-  { to: '/admin', label: 'Overview', roles: ['admin'] },
-  { to: '/trainer', label: 'Trainer View', roles: ['trainer'] },
-  { to: '/member', label: 'Member View', roles: ['member'] }
-];
 
 function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: DemoUser['role'][] }) {
   const { user } = useAuth();
@@ -30,7 +18,6 @@ function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?
 
 function Shell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
-  const visibleLinks = dashboardLinks.filter((link) => user && link.roles.includes(user.role));
   const initials = user?.full_name
     .split(' ')
     .filter(Boolean)
@@ -47,24 +34,16 @@ function Shell({ children }: { children: React.ReactNode }) {
           <h2>Gym Management</h2>
           <span>Operator #{user?.user_id ?? '----'}</span>
         </div>
-        <nav className="top-nav-tabs" aria-label="Primary navigation">
-          {visibleLinks.map((link) => (
-            <NavLink key={link.to} to={link.to}>{link.label}</NavLink>
-          ))}
-        </nav>
-        <button className="secondary sidebar-logout" type="button" onClick={logout}>Sign out</button>
       </aside>
       <div className="command-main">
         <header className="top-navbar">
-          <div className="command-status" aria-live="polite"><span aria-hidden="true" /> Gym live</div>
-          <div className="command-search" aria-label="Gym records search placeholder">Search members, classes, plans...</div>
-          <button className="secondary system-log-button" type="button" disabled title="Reports view is visual only">Reports</button>
           <div className="user-menu">
             <div className="avatar" aria-hidden="true">{initials}</div>
             <div className="user-meta">
               <strong>{user?.full_name}</strong>
               <span>{user?.role}</span>
             </div>
+            <button className="secondary sign-out-button" type="button" onClick={logout}>Sign out</button>
           </div>
         </header>
         <main id="main-content" className="dashboard-content">{children}</main>

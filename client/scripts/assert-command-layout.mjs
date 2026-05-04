@@ -7,8 +7,6 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const checks = [
   ['src/App.tsx', 'command-sidebar'],
   ['src/App.tsx', 'command-main'],
-  ['src/App.tsx', 'command-search'],
-  ['src/App.tsx', 'system-log-button'],
   ['src/pages/AdminDashboard.tsx', 'command-overview-grid'],
   ['src/pages/AdminDashboard.tsx', 'command-registry'],
   ['src/pages/AdminDashboard.tsx', 'command-alert-panel'],

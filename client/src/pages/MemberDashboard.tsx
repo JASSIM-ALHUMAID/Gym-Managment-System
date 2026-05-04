@@ -220,7 +220,7 @@ export default function MemberDashboard() {
     if (activePlan?.plan_name === plan.plan_name) return 'Current plan';
     if (pendingPlan?.plan_name === plan.plan_name) return `Request made for ${plan.plan_name}`;
     if (pendingPlan) return `Request already made for ${pendingPlan.plan_name}`;
-    if (activePlan) return 'Request upgrade';
+    if (activePlan) return 'Request';
     return 'Request plan';
   }
 

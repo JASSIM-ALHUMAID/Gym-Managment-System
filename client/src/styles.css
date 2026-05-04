@@ -1483,7 +1483,7 @@ td { color: #e2e8f0; }
   left: 1rem;
   padding: 0;
   position: fixed;
-  top: 12.75rem;
+  top: 8.4rem;
   width: 228px;
   z-index: 12;
 }
@@ -1608,16 +1608,22 @@ td { color: #e2e8f0; }
   border-left-color: var(--primary);
 }
 
-.sidebar-logout { width: 100%; }
+.sign-out-button {
+  min-height: 38px;
+  padding: 0.55rem 0.9rem;
+  width: auto;
+}
 
 .command-main { min-width: 0; }
 
 .top-navbar {
+  align-items: center;
   background: rgba(7, 12, 24, 0.9);
   border-width: 0 0 1px;
   border-color: rgba(148, 163, 184, 0.14);
   box-shadow: none;
-  grid-template-columns: auto minmax(200px, 420px) auto auto;
+  display: flex;
+  justify-content: flex-end;
   margin: 0;
   min-height: 64px;
 }
@@ -1902,8 +1908,8 @@ td { color: #e2e8f0; }
 
   .top-nav-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .top-nav-tabs a { text-align: center; }
-  .user-menu { align-items: stretch; display: grid; grid-template-columns: auto 1fr; }
-  .user-menu button { grid-column: 1 / -1; width: 100%; }
+  .user-menu { align-items: center; display: grid; grid-template-columns: auto 1fr auto; }
+  .sign-out-button { width: auto; }
   .dashboard-content { min-height: auto; padding: 1rem; }
 
   .dashboard-stack > .dashboard-tabs {
