@@ -49,13 +49,13 @@ authRouter.post('/register', asyncHandler(async (req, res) => {
     await connection.beginTransaction();
     const passwordHash = await hashPassword(password);
     const [userResult] = await connection.query<ResultSetHeader>(
-      `INSERT INTO users (username, password_hash, role, full_name, email, phone, status)
-       VALUES (?, ?, 'member', ?, ?, ?, 'active')`,
+      `INSERT INTO \`user\` (Username, PasswordHash, FullName, Email, Phone, Status, CreatedAt)
+       VALUES (?, ?, ?, ?, ?, 'Active', NOW())`,
       [username, passwordHash, fullName, email, phone]
     );
     const userId = userResult.insertId;
-    const [memberResult] = await connection.query<ResultSetHeader>(
-      'INSERT INTO members (user_id, gender, join_date) VALUES (?, ?, CURRENT_DATE)',
+    await connection.query<ResultSetHeader>(
+      'INSERT INTO member (UserID, Gender, JoinDate) VALUES (?, ?, CURRENT_DATE)',
       [userId, gender]
     );
     await connection.commit();
@@ -67,7 +67,7 @@ authRouter.post('/register', asyncHandler(async (req, res) => {
       full_name: fullName,
       email,
       status: 'active' as const,
-      member_id: memberResult.insertId,
+      member_id: userId,
       trainer_id: undefined
     };
     res.status(201).json({ token: signAuthToken(user), user });

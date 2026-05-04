@@ -44,7 +44,7 @@ describe('real auth routes', () => {
     vi.clearAllMocks();
   });
 
-  it('logs in active users with a valid password and returns a token', async () => {
+  it('logs in active staff users as admins with a valid password and returns a token', async () => {
     const passwordHash = await bcrypt.hash('password123', 10);
     mocks.pool.query.mockResolvedValueOnce([[{
       user_id: 1,
@@ -66,6 +66,53 @@ describe('real auth routes', () => {
     expect(response.body.token).toEqual(expect.any(String));
     expect(response.body.user).toMatchObject({ username: 'admin1', role: 'admin' });
     expect(response.body.user.password_hash).toBeUndefined();
+    expect(mocks.pool.query.mock.calls[0][0]).toContain('LEFT JOIN staff st ON st.UserID = u.UserID');
+    expect(mocks.pool.query.mock.calls[0][0]).toContain('LEFT JOIN trainer t ON t.UserID = u.UserID');
+    expect(mocks.pool.query.mock.calls[0][0]).toContain('LEFT JOIN member m ON m.UserID = u.UserID');
+  });
+
+  it('logs in active member users with member_id mapped to UserID', async () => {
+    const passwordHash = await bcrypt.hash('password123', 10);
+    mocks.pool.query.mockResolvedValueOnce([[{
+      user_id: 1,
+      username: 'ahmed_m',
+      password_hash: passwordHash,
+      role: 'member',
+      full_name: 'Ahmed Mohammed',
+      email: 'ahmed@example.com',
+      status: 'active',
+      member_id: 1,
+      trainer_id: null
+    }]]);
+
+    const response = await request(createApp())
+      .post('/api/auth/login')
+      .send({ username: 'ahmed_m', password: 'password123' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.user).toMatchObject({ user_id: 1, username: 'ahmed_m', role: 'member', member_id: 1 });
+  });
+
+  it('rejects login for active users without a role subtype', async () => {
+    const passwordHash = await bcrypt.hash('password123', 10);
+    mocks.pool.query.mockResolvedValueOnce([[{
+      user_id: 8,
+      username: 'orphan_user',
+      password_hash: passwordHash,
+      role: null,
+      full_name: 'Orphan User',
+      email: 'orphan@example.com',
+      status: 'active',
+      member_id: null,
+      trainer_id: null
+    }]]);
+
+    const response = await request(createApp())
+      .post('/api/auth/login')
+      .send({ username: 'orphan_user', password: 'password123' });
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: 'Invalid username or password' });
   });
 
   it('rejects login with an invalid password', async () => {
@@ -117,7 +164,7 @@ describe('real auth routes', () => {
     mocks.pool.query.mockResolvedValueOnce([[]]);
     mocks.connection.query
       .mockResolvedValueOnce([{ insertId: 9 }])
-      .mockResolvedValueOnce([{ insertId: 4 }]);
+      .mockResolvedValueOnce([{ insertId: 0 }]);
 
     const response = await request(createApp())
       .post('/api/auth/register')
@@ -132,7 +179,10 @@ describe('real auth routes', () => {
 
     expect(response.status).toBe(201);
     expect(response.body.token).toEqual(expect.any(String));
-    expect(response.body.user).toMatchObject({ user_id: 9, username: 'new_member', role: 'member', member_id: 4 });
+    expect(response.body.user).toMatchObject({ user_id: 9, username: 'new_member', role: 'member', member_id: 9 });
+    expect(mocks.connection.query.mock.calls[0][0]).toContain('INSERT INTO `user`');
+    expect(mocks.connection.query.mock.calls[1][0]).toBe('INSERT INTO member (UserID, Gender, JoinDate) VALUES (?, ?, CURRENT_DATE)');
+    expect(mocks.connection.query.mock.calls[1][1]).toEqual([9, 'other']);
     const insertedUserParams = mocks.connection.query.mock.calls[0][1] as unknown[];
     expect(insertedUserParams[1]).not.toBe('password123');
     await expect(bcrypt.compare('password123', String(insertedUserParams[1]))).resolves.toBe(true);
@@ -178,6 +228,27 @@ describe('real auth routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.user).toMatchObject({ username: 'member_noor', member_id: 2 });
+  });
+
+  it('rejects bearer tokens for users without a role subtype', async () => {
+    const token = jwt.sign({ user_id: 8 }, 'test-secret');
+    mocks.pool.query.mockResolvedValueOnce([[{
+      user_id: 8,
+      username: 'orphan_user',
+      role: null,
+      full_name: 'Orphan User',
+      email: 'orphan@example.com',
+      status: 'active',
+      member_id: null,
+      trainer_id: null
+    }]]);
+
+    const response = await request(createApp())
+      .get('/api/auth/me')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: 'Active user was not found' });
   });
 
   it('does not sign login tokens with the fallback secret in production', async () => {
