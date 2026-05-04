@@ -16,7 +16,8 @@
 
 
 -- Dumping database structure for gym_management
-CREATE DATABASE IF NOT EXISTS `gym_management` /*!40100 DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci */;
+DROP DATABASE IF EXISTS `gym_management`;
+CREATE DATABASE `gym_management` /*!40100 DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci */;
 USE `gym_management`;
 
 -- Dumping structure for table gym_management.attendance
