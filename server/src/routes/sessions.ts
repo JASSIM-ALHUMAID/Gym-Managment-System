@@ -6,6 +6,7 @@ import { HttpError, asyncHandler } from '../http.js';
 
 type SessionInput = {
   trainer_id: number;
+  session_title: string;
   session_type: string;
   description: string | null;
   location: string;
@@ -41,6 +42,7 @@ function toTimeValue(value: string) {
 function parseSessionInput(body: Record<string, unknown>): SessionInput {
   const trainerId = Number(body.trainer_id);
   const sessionType = String(body.session_type ?? '').trim();
+  const sessionTitle = String(body.session_title ?? body.session_type ?? '').trim();
   const description = body.description == null ? null : String(body.description).trim() || null;
   const location = String(body.location ?? '').trim();
   const difficulty = String(body.difficulty ?? 'beginner').trim();
@@ -51,6 +53,7 @@ function parseSessionInput(body: Record<string, unknown>): SessionInput {
 
   if (!Number.isInteger(trainerId) || trainerId <= 0) throw new HttpError(400, 'Valid trainer id is required');
   if (!sessionType) throw new HttpError(400, 'Session type is required');
+  if (!sessionTitle) throw new HttpError(400, 'Session title is required');
   if (!location) throw new HttpError(400, 'Location is required');
   if (!difficulties.includes(difficulty as SessionInput['difficulty'])) throw new HttpError(400, 'Difficulty must be beginner, intermediate, or advanced');
   if (!isValidDate(sessionDate)) throw new HttpError(400, 'Valid session date is required');
@@ -61,6 +64,7 @@ function parseSessionInput(body: Record<string, unknown>): SessionInput {
 
   return {
     trainer_id: trainerId,
+    session_title: sessionTitle,
     session_type: sessionType,
     description,
     location,
@@ -93,17 +97,17 @@ function toDbStatus(status: string) {
   return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 }
 
-function toSessionResponse(sessionId: number, input: SessionInput) {
+function toSessionResponse(sessionId: number, input: SessionInput, status?: string) {
   return {
     session_id: sessionId,
     trainer_id: input.trainer_id,
-    session_title: input.session_type,
-    session_type: input.difficulty,
+    session_title: input.session_title,
+    session_type: input.session_type,
     session_date: input.session_date,
     start_time: input.start_time,
     end_time: input.end_time,
     capacity: input.capacity,
-    status: 'scheduled'
+    ...(status ? { status } : {})
   };
 }
 
@@ -150,10 +154,10 @@ sessionsRouter.post('/', asyncHandler(async (req, res) => {
 
   const [result] = await pool.query<ResultSetHeader>(
     'INSERT INTO `session` (TrainerUserID, SessionTitle, SessionType, SessionDate, StartTime, EndTime, Capacity, Status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [input.trainer_id, input.session_type, input.difficulty, input.session_date, input.start_time, input.end_time, input.capacity, 'Scheduled']
+    [input.trainer_id, input.session_title, input.session_type, input.session_date, input.start_time, input.end_time, input.capacity, 'Scheduled']
   );
 
-  res.status(201).json({ session: toSessionResponse(result.insertId, input) });
+  res.status(201).json({ session: toSessionResponse(result.insertId, input, 'scheduled') });
 }));
 
 sessionsRouter.put('/:id', asyncHandler(async (req, res) => {
@@ -169,7 +173,7 @@ sessionsRouter.put('/:id', asyncHandler(async (req, res) => {
 
   const [result] = await pool.query<ResultSetHeader>(
     'UPDATE `session` SET TrainerUserID = ?, SessionTitle = ?, SessionType = ?, SessionDate = ?, StartTime = ?, EndTime = ?, Capacity = ? WHERE SessionID = ?',
-    [input.trainer_id, input.session_type, input.difficulty, input.session_date, input.start_time, input.end_time, input.capacity, sessionId]
+    [input.trainer_id, input.session_title, input.session_type, input.session_date, input.start_time, input.end_time, input.capacity, sessionId]
   );
   if (result.affectedRows === 0) throw new HttpError(404, 'Session was not found');
 

@@ -126,6 +126,20 @@ describe('workflow route handlers', () => {
     expect(response.body).toEqual({ error: 'Booking is already cancelled' });
   });
 
+  it('handles null booking status when cancelling through the bookings route', async () => {
+    mocks.pool.query
+      .mockResolvedValueOnce([[{ booking_status: null }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+    const response = await request(createApp())
+      .patch('/api/bookings/5/cancel')
+      .send();
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ booking: { booking_id: 5, booking_status: 'cancelled' } });
+    expect(mocks.pool.query).toHaveBeenLastCalledWith(expect.stringContaining("BookingStatus = 'Cancelled'"), [5]);
+  });
+
   it('rejects invalid attendance status through the attendance route', async () => {
     const response = await request(createApp())
       .post('/api/attendance')

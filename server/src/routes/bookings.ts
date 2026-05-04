@@ -8,10 +8,10 @@ import { canBookSession, getBookingResponseStatus } from '../workflowRules.js';
 type SessionRow = { status: string; capacity: number; session_type: string } & RowDataPacket;
 type CountRow = { count: number } & RowDataPacket;
 type ExistingBookingRow = { booking_id: number; booking_status: string } & RowDataPacket;
-type BookingStatusRow = { booking_status: string } & RowDataPacket;
+type BookingStatusRow = { booking_status: string | null } & RowDataPacket;
 
-function normalizeStatus(value: string) {
-  return value.trim().toLowerCase();
+function normalizeStatus(value: string | null | undefined) {
+  return String(value ?? '').trim().toLowerCase();
 }
 
 function parseId(value: unknown, label: string) {

@@ -86,7 +86,7 @@ describe('admin workflow routes', () => {
       session_id: 12,
       trainer_id: 1,
       session_title: 'Boxing Fundamentals',
-      session_type: 'beginner',
+      session_type: 'Boxing Fundamentals',
       session_date: '2026-05-01',
       start_time: '09:00:00',
       end_time: '10:00:00',
@@ -96,7 +96,43 @@ describe('admin workflow routes', () => {
     expect(response.body.session.description).toBeUndefined();
     expect(response.body.session.location).toBeUndefined();
     expect(response.body.session.difficulty).toBeUndefined();
-    expect(mocks.pool.query).toHaveBeenLastCalledWith(expect.stringContaining('INSERT INTO `session`'), [1, 'Boxing Fundamentals', 'beginner', '2026-05-01', '09:00:00', '10:00:00', 10, 'Scheduled']);
+    expect(mocks.pool.query).toHaveBeenLastCalledWith(expect.stringContaining('INSERT INTO `session`'), [1, 'Boxing Fundamentals', 'Boxing Fundamentals', '2026-05-01', '09:00:00', '10:00:00', 10, 'Scheduled']);
+  });
+
+  it('updates sessions without inventing a scheduled status', async () => {
+    mocks.pool.query
+      .mockResolvedValueOnce([[{ session_id: 12, count: 1 }]])
+      .mockResolvedValueOnce([[{ count: 1 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+    const response = await request(createApp())
+      .put('/api/sessions/12')
+      .send({
+        trainer_id: 1,
+        session_title: 'Strength Lab',
+        session_type: 'Personal Training',
+        description: 'Technique-focused class',
+        location: 'Studio C',
+        difficulty: 'advanced',
+        session_date: '2026-05-01',
+        start_time: '09:00:00',
+        end_time: '10:00:00',
+        capacity: 10
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.session).toMatchObject({
+      session_id: 12,
+      trainer_id: 1,
+      session_title: 'Strength Lab',
+      session_type: 'Personal Training',
+      session_date: '2026-05-01',
+      start_time: '09:00:00',
+      end_time: '10:00:00',
+      capacity: 10
+    });
+    expect(response.body.session.status).toBeUndefined();
+    expect(mocks.pool.query).toHaveBeenLastCalledWith(expect.stringContaining('UPDATE `session`'), [1, 'Strength Lab', 'Personal Training', '2026-05-01', '09:00:00', '10:00:00', 10, 12]);
   });
 
   it('activates pending subscriptions as admin', async () => {
