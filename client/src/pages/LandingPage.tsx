@@ -1,19 +1,19 @@
 import { Link } from 'react-router-dom';
 
 const features = [
-  { title: 'Plan control', text: 'Create membership plans, review pricing, and keep subscription requests moving.' },
-  { title: 'Session grid', text: 'Coordinate trainers, class capacity, locations, and difficulty from one operations view.' },
-  { title: 'Booking flow', text: 'Members reserve classes while the system protects capacity and subscription rules.' },
-  { title: 'Attendance loop', text: 'Trainers mark attendance and admins can review the full operational record.' }
+  { title: 'Membership Plans', text: 'Create plans, review subscription requests, and keep member access organized.' },
+  { title: 'Class Scheduling', text: 'Coordinate trainers, capacity, locations, difficulty, and daily class operations.' },
+  { title: 'Member Bookings', text: 'Let members reserve classes while the system protects capacity and membership rules.' },
+  { title: 'Attendance Tracking', text: 'Trainers mark attendance and admins review the operational history.' }
 ];
 
 const roles = [
-  { label: 'Admin', stat: 'Controls', text: 'Plans, sessions, subscriptions, payments, and resource tables.' },
-  { label: 'Trainer', stat: 'Attendance', text: 'Assigned sessions, member rosters, status marking, and history.' },
+  { label: 'Admin', stat: 'Operations', text: 'Members, plans, classes, subscriptions, payments, and resource tables.' },
+  { label: 'Trainer', stat: 'Classes', text: 'Assigned sessions, member rosters, attendance marking, and history.' },
   { label: 'Member', stat: 'Self-service', text: 'Plan requests, class booking, booking review, and payments.' }
 ];
 
-const workflow = ['Create plans', 'Approve subscriptions', 'Schedule sessions', 'Book members', 'Mark attendance', 'Review payments'];
+const workflow = ['Create plans', 'Approve subscriptions', 'Schedule classes', 'Book members', 'Mark attendance', 'Review payments'];
 
 export default function LandingPage() {
   return (
@@ -31,9 +31,9 @@ export default function LandingPage() {
 
       <section className="landing-hero">
         <div className="hero-copy">
-          <p className="eyebrow">Dark ops for modern gyms</p>
-          <h1>Run memberships, sessions, bookings, and attendance from one command system.</h1>
-          <p className="hero-lede">A role-based gym management portal built for admins, trainers, and members who need clear workflows instead of spreadsheet chaos.</p>
+          <p className="eyebrow">Gym management system</p>
+          <h1>Run memberships, classes, bookings, and attendance from one studio dashboard.</h1>
+          <p className="hero-lede">Pulse Studio gives admins, trainers, and members focused tools for daily gym operations without spreadsheet chaos.</p>
           <div className="hero-actions">
             <Link className="button-link" to="/login">Enter system</Link>
             <Link className="ghost-link" to="/login?mode=register">Create member account</Link>
@@ -41,12 +41,12 @@ export default function LandingPage() {
         </div>
         <aside className="hero-console" aria-label="Operations preview">
           <div className="console-header">
-            <span>Operations live</span>
-            <strong>Redline</strong>
+            <span>Studio activity</span>
+            <strong>Live</strong>
           </div>
           <div className="console-grid">
             <article><span>Active members</span><strong>884</strong></article>
-            <article><span>Scheduled sessions</span><strong>44</strong></article>
+            <article><span>Classes today</span><strong>44</strong></article>
             <article><span>Bookings</span><strong>128</strong></article>
             <article><span>Open payments</span><strong>12</strong></article>
           </div>

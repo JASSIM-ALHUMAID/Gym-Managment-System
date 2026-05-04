@@ -67,9 +67,9 @@ export default function LoginPage() {
           <span className="brand-symbol" aria-hidden="true">GMS</span>
           <span>Gym Management System</span>
         </Link>
-        <p className="eyebrow">Authentication</p>
-        <h1>{mode === 'login' ? 'Sign in' : 'Register'}</h1>
-        <p className="muted">Seeded demo users share the password <code>password123</code>.</p>
+        <p className="eyebrow">Pulse Studio Access</p>
+        <h1>{mode === 'login' ? 'Welcome back' : 'Create member account'}</h1>
+        <p className="muted">Use a seeded demo profile or register a new member account. Demo users share <code>password123</code>.</p>
 
         <label className="quick-login" htmlFor="sampleUser">
           <span>Quick sample login</span>

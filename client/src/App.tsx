@@ -14,9 +14,9 @@ type DashboardLink = {
 };
 
 const dashboardLinks: DashboardLink[] = [
-  { to: '/admin', label: 'Admin ops', roles: ['admin'] },
-  { to: '/trainer', label: 'Trainer floor', roles: ['trainer'] },
-  { to: '/member', label: 'Member hub', roles: ['member'] }
+  { to: '/admin', label: 'Overview', roles: ['admin'] },
+  { to: '/trainer', label: 'Trainer View', roles: ['trainer'] },
+  { to: '/member', label: 'Member View', roles: ['member'] }
 ];
 
 function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: DemoUser['role'][] }) {
@@ -41,10 +41,10 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to main content</a>
-      <aside className="command-sidebar" aria-label="Command navigation">
+      <aside className="command-sidebar" aria-label="Gym management navigation">
         <div className="brand-block">
-          <p className="eyebrow">Iron Command</p>
-          <h2>Gym Control</h2>
+          <p className="eyebrow">Pulse Studio</p>
+          <h2>Gym Management</h2>
           <span>Operator #{user?.user_id ?? '----'}</span>
         </div>
         <nav className="top-nav-tabs" aria-label="Primary navigation">
@@ -52,20 +52,20 @@ function Shell({ children }: { children: React.ReactNode }) {
             <NavLink key={link.to} to={link.to}>{link.label}</NavLink>
           ))}
         </nav>
-        <button className="secondary sidebar-logout" type="button" onClick={logout}>Log session</button>
+        <button className="secondary sidebar-logout" type="button" onClick={logout}>Sign out</button>
       </aside>
       <div className="command-main">
         <header className="top-navbar">
-          <div className="command-status" aria-live="polite"><span aria-hidden="true" /> System operational</div>
-          <div className="command-search" aria-label="Database query placeholder">Query database...</div>
-          <button className="secondary system-log-button" type="button" disabled title="System log view is visual only">System_log</button>
-        <div className="user-menu">
-          <div className="avatar" aria-hidden="true">{initials}</div>
-          <div className="user-meta">
-            <strong>{user?.full_name}</strong>
-            <span>{user?.role}</span>
+          <div className="command-status" aria-live="polite"><span aria-hidden="true" /> Gym live</div>
+          <div className="command-search" aria-label="Gym records search placeholder">Search members, classes, plans...</div>
+          <button className="secondary system-log-button" type="button" disabled title="Reports view is visual only">Reports</button>
+          <div className="user-menu">
+            <div className="avatar" aria-hidden="true">{initials}</div>
+            <div className="user-meta">
+              <strong>{user?.full_name}</strong>
+              <span>{user?.role}</span>
+            </div>
           </div>
-        </div>
         </header>
         <main id="main-content" className="dashboard-content">{children}</main>
       </div>

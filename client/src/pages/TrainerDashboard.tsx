@@ -256,7 +256,7 @@ export default function TrainerDashboard() {
         </article>
       </section>
 
-      <section className="tabs" aria-label="Trainer sections">
+      <section className="tabs dashboard-tabs" aria-label="Trainer sections">
         <button type="button" className={activeTab === 'upcoming' ? 'active' : ''} onClick={() => setActiveTab('upcoming')}>Upcoming</button>
         <button type="button" className={activeTab === 'completed' ? 'active' : ''} onClick={() => setActiveTab('completed')}>Completed</button>
         <button type="button" className={activeTab === 'mark' ? 'active' : ''} onClick={() => setActiveTab('mark')}>Mark attendance</button>
