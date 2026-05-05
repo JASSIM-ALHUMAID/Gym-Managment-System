@@ -27,6 +27,17 @@ Roles are derived from subtype tables instead of a `role` column:
 
 The seeded admin account is created by inserting user `admin1` into `user`, then linking it through `staff`.
 
+The database also uses `CHECK` constraints for core data integrity:
+
+- `user.Status` must be `Active`, `Inactive`, or `Suspended`.
+- `subscription.Status` must be `Pending`, `Active`, or `Cancelled`.
+- `payment.PaymentStatus` must be `Pending`, `Paid`, or `Failed`.
+- `session.Status` must be `Scheduled`, `Completed`, or `Cancelled`.
+- `booking.BookingStatus` must be `Confirmed`, `Booked`, or `Cancelled`.
+- `attendance.AttendanceStatus` must be `Present`, `Absent`, or `Late`.
+- `membershipplan.DurationMonths`, `membershipplan.Price`, `payment.Amount`, and `session.Capacity` must be greater than `0`.
+- `session.EndTime` must be after `session.StartTime`.
+
 ## Functionality and Queries
 
 ### Login

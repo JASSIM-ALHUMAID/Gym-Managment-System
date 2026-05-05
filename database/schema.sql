@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS `attendance` (
   UNIQUE KEY `BookingID` (`BookingID`),
   KEY `fk_attendance_trainer` (`MarkedByTrainerUserID`),
   CONSTRAINT `fk_attendance_booking` FOREIGN KEY (`BookingID`) REFERENCES `booking` (`BookingID`) ON UPDATE CASCADE,
-  CONSTRAINT `fk_attendance_trainer` FOREIGN KEY (`MarkedByTrainerUserID`) REFERENCES `trainer` (`UserID`) ON UPDATE CASCADE
+  CONSTRAINT `fk_attendance_trainer` FOREIGN KEY (`MarkedByTrainerUserID`) REFERENCES `trainer` (`UserID`) ON UPDATE CASCADE,
+  CONSTRAINT `chk_attendance_status` CHECK (`AttendanceStatus` in ('Present','Absent','Late'))
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- Dumping data for table gym_management.attendance: ~2 rows (approximately)
@@ -50,7 +51,8 @@ CREATE TABLE IF NOT EXISTS `booking` (
   UNIQUE KEY `uq_booking_member_session` (`MemberUserID`,`SessionID`),
   KEY `fk_booking_session` (`SessionID`),
   CONSTRAINT `fk_booking_member` FOREIGN KEY (`MemberUserID`) REFERENCES `member` (`UserID`) ON UPDATE CASCADE,
-  CONSTRAINT `fk_booking_session` FOREIGN KEY (`SessionID`) REFERENCES `session` (`SessionID`) ON UPDATE CASCADE
+  CONSTRAINT `fk_booking_session` FOREIGN KEY (`SessionID`) REFERENCES `session` (`SessionID`) ON UPDATE CASCADE,
+  CONSTRAINT `chk_booking_status` CHECK (`BookingStatus` in ('Confirmed','Booked','Cancelled'))
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- Dumping data for table gym_management.booking: ~2 rows (approximately)
@@ -80,7 +82,9 @@ CREATE TABLE IF NOT EXISTS `membershipplan` (
   `Price` decimal(10,2) NOT NULL,
   `Description` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`PlanID`),
-  UNIQUE KEY `PlanName` (`PlanName`)
+  UNIQUE KEY `PlanName` (`PlanName`),
+  CONSTRAINT `chk_membershipplan_duration` CHECK (`DurationMonths` > 0),
+  CONSTRAINT `chk_membershipplan_price` CHECK (`Price` > 0)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- Dumping data for table gym_management.membershipplan: ~3 rows (approximately)
@@ -99,7 +103,9 @@ CREATE TABLE IF NOT EXISTS `payment` (
   `PaymentStatus` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`PaymentID`),
   KEY `fk_payment_subscription` (`SubscriptionID`),
-  CONSTRAINT `fk_payment_subscription` FOREIGN KEY (`SubscriptionID`) REFERENCES `subscription` (`SubscriptionID`) ON UPDATE CASCADE
+  CONSTRAINT `fk_payment_subscription` FOREIGN KEY (`SubscriptionID`) REFERENCES `subscription` (`SubscriptionID`) ON UPDATE CASCADE,
+  CONSTRAINT `chk_payment_amount` CHECK (`Amount` > 0),
+  CONSTRAINT `chk_payment_status` CHECK (`PaymentStatus` in ('Pending','Paid','Failed'))
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- Dumping data for table gym_management.payment: ~2 rows (approximately)
@@ -120,7 +126,10 @@ CREATE TABLE IF NOT EXISTS `session` (
   `Status` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`SessionID`),
   KEY `fk_session_trainer` (`TrainerUserID`),
-  CONSTRAINT `fk_session_trainer` FOREIGN KEY (`TrainerUserID`) REFERENCES `trainer` (`UserID`) ON UPDATE CASCADE
+  CONSTRAINT `fk_session_trainer` FOREIGN KEY (`TrainerUserID`) REFERENCES `trainer` (`UserID`) ON UPDATE CASCADE,
+  CONSTRAINT `chk_session_capacity` CHECK (`Capacity` > 0),
+  CONSTRAINT `chk_session_status` CHECK (`Status` in ('Scheduled','Completed','Cancelled')),
+  CONSTRAINT `chk_session_time_order` CHECK (`EndTime` > `StartTime`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- Dumping data for table gym_management.session: ~2 rows (approximately)
@@ -140,7 +149,8 @@ CREATE TABLE IF NOT EXISTS `subscription` (
   KEY `fk_subscription_member` (`MemberUserID`),
   KEY `fk_subscription_plan` (`PlanID`),
   CONSTRAINT `fk_subscription_member` FOREIGN KEY (`MemberUserID`) REFERENCES `member` (`UserID`) ON UPDATE CASCADE,
-  CONSTRAINT `fk_subscription_plan` FOREIGN KEY (`PlanID`) REFERENCES `membershipplan` (`PlanID`) ON UPDATE CASCADE
+  CONSTRAINT `fk_subscription_plan` FOREIGN KEY (`PlanID`) REFERENCES `membershipplan` (`PlanID`) ON UPDATE CASCADE,
+  CONSTRAINT `chk_subscription_status` CHECK (`Status` in ('Pending','Active','Cancelled'))
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- Dumping data for table gym_management.subscription: ~2 rows (approximately)
@@ -182,7 +192,8 @@ CREATE TABLE IF NOT EXISTS `user` (
   `CreatedAt` datetime NOT NULL,
   PRIMARY KEY (`UserID`),
   UNIQUE KEY `Username` (`Username`),
-  UNIQUE KEY `Email` (`Email`)
+  UNIQUE KEY `Email` (`Email`),
+  CONSTRAINT `chk_user_status` CHECK (`Status` in ('Active','Inactive','Suspended'))
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- Dumping data for table gym_management.user: ~4 rows (approximately)

@@ -1,0 +1,24 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+const schema = readFileSync(resolve(import.meta.dirname, '../../database/schema.sql'), 'utf8');
+
+describe('database schema constraints', () => {
+  it('restricts status columns to application-supported values', () => {
+    expect(schema).toContain("CONSTRAINT `chk_user_status` CHECK (`Status` in ('Active','Inactive','Suspended'))");
+    expect(schema).toContain("CONSTRAINT `chk_subscription_status` CHECK (`Status` in ('Pending','Active','Cancelled'))");
+    expect(schema).toContain("CONSTRAINT `chk_payment_status` CHECK (`PaymentStatus` in ('Pending','Paid','Failed'))");
+    expect(schema).toContain("CONSTRAINT `chk_session_status` CHECK (`Status` in ('Scheduled','Completed','Cancelled'))");
+    expect(schema).toContain("CONSTRAINT `chk_booking_status` CHECK (`BookingStatus` in ('Confirmed','Booked','Cancelled'))");
+    expect(schema).toContain("CONSTRAINT `chk_attendance_status` CHECK (`AttendanceStatus` in ('Present','Absent','Late'))");
+  });
+
+  it('guards positive numeric fields and valid session times', () => {
+    expect(schema).toContain('CONSTRAINT `chk_membershipplan_duration` CHECK (`DurationMonths` > 0)');
+    expect(schema).toContain('CONSTRAINT `chk_membershipplan_price` CHECK (`Price` > 0)');
+    expect(schema).toContain('CONSTRAINT `chk_payment_amount` CHECK (`Amount` > 0)');
+    expect(schema).toContain('CONSTRAINT `chk_session_capacity` CHECK (`Capacity` > 0)');
+    expect(schema).toContain('CONSTRAINT `chk_session_time_order` CHECK (`EndTime` > `StartTime`)');
+  });
+});
