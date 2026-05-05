@@ -28,8 +28,6 @@ type SessionRow = ResourceRow & {
   trainer_name: string;
   trainer_specialty: string;
   description: string | null;
-  location: string;
-  difficulty: string;
   capacity: number;
   booked_count: number;
   status: string;
@@ -214,6 +212,10 @@ export default function MemberDashboard() {
     return ['Gym facilities during standard hours'];
   }
 
+  function isActiveBookingStatus(status: string) {
+    return status === 'booked' || status === 'confirmed';
+  }
+
   function planButtonLabel(plan: PlanRow) {
     const activePlan = subscriptions.find((subscription) => subscription.status === 'active');
     const pendingPlan = subscriptions.find((subscription) => subscription.status === 'pending');
@@ -228,21 +230,19 @@ export default function MemberDashboard() {
     return subscriptions.some((subscription) => subscription.status === 'active' && subscription.plan_name === plan.plan_name);
   }
 
-  const activeBookingBySession = new Map(bookings.filter((booking) => booking.booking_status === 'booked').map((booking) => [booking.session_id, booking]));
+  const activeBookingBySession = new Map(bookings.filter((booking) => isActiveBookingStatus(booking.booking_status)).map((booking) => [booking.session_id, booking]));
   const activeSubscription = subscriptions.find((subscription) => subscription.status === 'active');
   const pendingSubscription = subscriptions.find((subscription) => subscription.status === 'pending');
   const latestPayment = payments[0];
   const hasActiveSubscription = subscriptions.some((subscription) => subscription.status === 'active');
   const hasPendingSubscription = subscriptions.some((subscription) => subscription.status === 'pending');
   const isPlanRequestPending = pendingPlanIds.size > 0;
-  const activeBookings = bookings.filter((booking) => booking.booking_status === 'booked');
+  const activeBookings = bookings.filter((booking) => isActiveBookingStatus(booking.booking_status));
   const nextSession = sessions[0];
   const sessionColumns: ResourceColumn<SessionRow>[] = [
     { key: 'session_type', label: 'Type' },
     { key: 'trainer_name', label: 'Trainer' },
     { key: 'trainer_specialty', label: 'Specialty' },
-    { key: 'location', label: 'Location' },
-    { key: 'difficulty', label: 'Difficulty' },
     { key: 'session_date', label: 'Date', format: formatDate },
     { key: 'start_time', label: 'Start', format: formatTime },
     { key: 'end_time', label: 'End', format: formatTime },
@@ -276,7 +276,7 @@ export default function MemberDashboard() {
     {
       key: 'action',
       label: 'Action',
-      render: (booking) => booking.booking_status === 'booked' ? (
+      render: (booking) => isActiveBookingStatus(booking.booking_status) ? (
         <button type="button" className="small-button danger" disabled={pendingBookingIds.has(booking.booking_id)} onClick={() => runMemberAction(() => request(`/bookings/${booking.booking_id}/cancel`, { method: 'PATCH' }), 'Booking cancelled.', setPendingBookingIds, booking.booking_id)}>
           {pendingBookingIds.has(booking.booking_id) ? 'Cancelling...' : 'Cancel'}
         </button>

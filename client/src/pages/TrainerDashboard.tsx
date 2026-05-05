@@ -11,8 +11,6 @@ type SessionRow = ResourceRow & {
   end_time: string;
   capacity: number;
   booked_count: number;
-  location: string;
-  difficulty: string;
   description: string | null;
   status: string;
 };
@@ -63,8 +61,6 @@ const sessionColumns: ResourceColumn<SessionRow>[] = [
   { key: 'session_date', label: 'Date', format: formatDate },
   { key: 'start_time', label: 'Start', format: formatTime },
   { key: 'end_time', label: 'End', format: formatTime },
-  { key: 'location', label: 'Location' },
-  { key: 'difficulty', label: 'Difficulty' },
   { key: 'booked_count', label: 'Booked' },
   { key: 'capacity', label: 'Capacity' },
   { key: 'status', label: 'Status' }
@@ -83,8 +79,6 @@ const historyColumns: ResourceColumn<ResourceRow>[] = [
   { key: 'member_name', label: 'Member' },
   { key: 'attendance_status', label: 'Status' },
   { key: 'session_date', label: 'Date', format: formatDate },
-  { key: 'location', label: 'Location' },
-  { key: 'difficulty', label: 'Difficulty' },
   { key: 'marked_at', label: 'Marked', format: formatDateTime }
 ];
 
@@ -251,7 +245,7 @@ export default function TrainerDashboard() {
         <article className="status-card trainer-focus-card">
           <p className="eyebrow">Selected session</p>
           <h2>{selectedSession ? selectedSession.session_type : 'Standby'}</h2>
-          <p className="muted">{selectedSession ? `${formatDate(selectedSession.session_date)} at ${formatTime(selectedSession.start_time)} · ${selectedSession.location}` : 'Select a session to begin attendance control.'}</p>
+          <p className="muted">{selectedSession ? `${formatDate(selectedSession.session_date)} at ${formatTime(selectedSession.start_time)}` : 'Select a session to begin attendance control.'}</p>
           <span className="pill">{completedSessions.length} completed</span>
         </article>
       </section>

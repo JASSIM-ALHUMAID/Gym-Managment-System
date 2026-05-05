@@ -6,7 +6,8 @@ import { pool } from './db.js';
 import { HttpError } from './http.js';
 import type { DemoUser, Role } from './types.js';
 
-type UserRow = DemoUser & { password_hash?: string } & RowDataPacket;
+type UserRow = Omit<DemoUser, 'role'> & { role: Role | null; password_hash?: string } & RowDataPacket;
+type UserWithRole = DemoUser & { password_hash?: string } & RowDataPacket;
 
 const JWT_EXPIRES_IN = '8h';
 
@@ -30,7 +31,11 @@ export async function verifyPassword(password: string, passwordHash: string) {
   return bcrypt.compare(password, passwordHash);
 }
 
-function publicUser(user: UserRow): DemoUser {
+function hasRole(user: UserRow | null): user is UserWithRole {
+  return user?.role != null;
+}
+
+function publicUser(user: UserWithRole): DemoUser {
   return {
     user_id: user.user_id,
     username: user.username,
@@ -45,32 +50,57 @@ function publicUser(user: UserRow): DemoUser {
 
 export async function findDemoUser(username: string) {
   const [rows] = await pool.query<UserRow[]>(
-    `SELECT u.user_id, u.username, u.password_hash, u.role, u.full_name, u.email, u.status,
-            m.member_id, t.trainer_id
-       FROM users u
-       LEFT JOIN members m ON m.user_id = u.user_id
-       LEFT JOIN trainers t ON t.user_id = u.user_id
-      WHERE u.username = ?
+    `SELECT u.UserID AS user_id,
+            u.Username AS username,
+            u.PasswordHash AS password_hash,
+            u.FullName AS full_name,
+            u.Email AS email,
+            LOWER(u.Status) AS status,
+            CASE
+              WHEN st.UserID IS NOT NULL THEN 'admin'
+              WHEN t.UserID IS NOT NULL THEN 'trainer'
+              WHEN m.UserID IS NOT NULL THEN 'member'
+            END AS role,
+            m.UserID AS member_id,
+            t.UserID AS trainer_id
+       FROM \`user\` u
+       LEFT JOIN staff st ON st.UserID = u.UserID
+       LEFT JOIN trainer t ON t.UserID = u.UserID
+       LEFT JOIN member m ON m.UserID = u.UserID
+      WHERE u.Username = ?
       LIMIT 1`,
     [username]
   );
 
-  return rows[0] ?? null;
+  const user = rows[0] ?? null;
+  return hasRole(user) ? user : null;
 }
 
 export async function findPublicUserById(userId: number) {
   const [rows] = await pool.query<UserRow[]>(
-    `SELECT u.user_id, u.username, u.password_hash, u.role, u.full_name, u.email, u.status,
-            m.member_id, t.trainer_id
-       FROM users u
-       LEFT JOIN members m ON m.user_id = u.user_id
-       LEFT JOIN trainers t ON t.user_id = u.user_id
-      WHERE u.user_id = ?
+    `SELECT u.UserID AS user_id,
+            u.Username AS username,
+            u.PasswordHash AS password_hash,
+            u.FullName AS full_name,
+            u.Email AS email,
+            LOWER(u.Status) AS status,
+            CASE
+              WHEN st.UserID IS NOT NULL THEN 'admin'
+              WHEN t.UserID IS NOT NULL THEN 'trainer'
+              WHEN m.UserID IS NOT NULL THEN 'member'
+            END AS role,
+            m.UserID AS member_id,
+            t.UserID AS trainer_id
+       FROM \`user\` u
+       LEFT JOIN staff st ON st.UserID = u.UserID
+       LEFT JOIN trainer t ON t.UserID = u.UserID
+       LEFT JOIN member m ON m.UserID = u.UserID
+      WHERE u.UserID = ?
       LIMIT 1`,
     [userId]
   );
   const user = rows[0] ?? null;
-  return user ? publicUser(user) : null;
+  return hasRole(user) ? publicUser(user) : null;
 }
 
 export function requireBearerToken(req: Request) {

@@ -4,12 +4,7 @@ import type { DemoUser } from '../api';
 import { useAuth } from '../auth';
 
 const sampleUsers = [
-  { username: 'admin1', label: 'Admin User', role: 'Admin' },
-  { username: 'trainer_ahmed', label: 'Ahmed Saleh', role: 'Trainer' },
-  { username: 'trainer_lina', label: 'Lina Adel', role: 'Trainer' },
-  { username: 'member_omar', label: 'Omar Alharbi', role: 'Member' },
-  { username: 'member_noor', label: 'Noor Hassan', role: 'Member' },
-  { username: 'member_sara', label: 'Sara Khalid', role: 'Member' }
+  { username: 'admin1', label: 'Admin User', role: 'Admin' }
 ];
 
 export function dashboardPathFor(user: DemoUser) {
@@ -69,7 +64,7 @@ export default function LoginPage() {
         </Link>
         <p className="eyebrow">Pulse Studio Access</p>
         <h1>{mode === 'login' ? 'Welcome back' : 'Create member account'}</h1>
-        <p className="muted">Use a seeded demo profile or register a new member account. Demo users share <code>password123</code>.</p>
+        <p className="muted">Use the seeded admin profile or register a new member account. The demo login uses <code>password123</code>.</p>
 
         <label className="quick-login" htmlFor="sampleUser">
           <span>Quick sample login</span>

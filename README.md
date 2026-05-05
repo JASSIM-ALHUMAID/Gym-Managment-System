@@ -272,22 +272,22 @@ SELECT user_id, username, role, full_name, email, phone, status, created_at
 
 ## Database Setup
 
-Create and seed the MySQL 8 database from the repository root. The schema resets the database, so this will delete and recreate `gym_management_system`:
+Create and seed the MySQL 8 database from the repository root. The schema resets the database, so this will delete and recreate `gym_management`:
 
 ```bash
 mysql -u root -p < database/schema.sql
-mysql -u root -p gym_management_system < database/sample-data.sql
+mysql -u root -p gym_management < database/sample-data.sql
 ```
 
 These commands work in Bash or Git Bash. On Windows PowerShell, either run them from Git Bash or import the files through the MySQL shell/client, for example:
 
 ```sql
 SOURCE database/schema.sql;
-USE gym_management_system;
+USE gym_management;
 SOURCE database/sample-data.sql;
 ```
 
-The schema script creates `gym_management_system`. The seed script inserts users with real bcrypt password hashes, plans, members, trainers, subscriptions, payments, sessions, bookings, and attendance records. If your MySQL user is not `root`, import the same files with a user that has permission to create databases and insert data.
+The schema script creates `gym_management` and includes the canonical seed data for the current gym schema: users, member/trainer/staff role tables, membership plans, subscriptions, payments, sessions, bookings, and attendance records. `database/sample-data.sql` is kept as a compatibility no-op for scripts that still import it. If your MySQL user is not `root`, import the same files with a user that has permission to create databases and insert data.
 
 ## App Setup
 
@@ -317,22 +317,15 @@ This project uses username/password authentication with backend-issued JWT beare
 
 ## Seeded Users
 
-All seeded active users use this password:
+The seeded staff/admin login uses this password:
 
 ```text
 password123
 ```
 
 - admin1
-- staff1
-- trainer_ahmed
-- trainer_lina
-- member_omar
-- member_noor
-- member_sara
-- member_faisal
 
-`member_faisal` is seeded as inactive and is expected to be rejected by login.
+`admin1` is seeded in the `user` table and linked through the `staff` table with the `Admin` position. The schema also includes sample member users `ahmed_m` and `sara_a`, and trainer users `khalid_t` and `nora_t`, but their placeholder password hashes are seed data for relational workflows rather than demo logins.
 
 Members can also create a new account from the Register tab on the login page.
 
@@ -341,8 +334,6 @@ Members can also create a new account from the Register tab on the login page.
 After loading the database and running `npm run dev`, use the frontend login page to verify the main role workflows:
 
 - `admin1`: create/update plans and sessions, activate/cancel subscriptions, and view operational tables.
-- `staff1`: use the same operational controls as admin for now.
-- `trainer_ahmed`: view upcoming/completed sessions, mark attendance, and review attendance history.
-- `member_omar`: compare plans, request a subscription, view sessions with trainer details, and book/cancel sessions when an active subscription exists.
+- Sample member, trainer, subscription, payment, session, booking, and attendance rows are available for admin/staff workflow verification after importing `database/schema.sql`.
 
 Known local verification limitation: this repository requires a local MySQL client/server for database import and full browser workflow testing. If `mysql` is not installed or credentials are unknown, the build and automated workflow tests can still be run, but end-to-end data-backed walkthroughs must be completed on a machine with MySQL configured.

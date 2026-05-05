@@ -22,11 +22,17 @@ trainersRouter.get('/', asyncHandler(async (req, res) => {
   requireRole(user, ['admin', 'member']);
 
   const [rows] = await pool.query<TrainerRow[]>(`
-    SELECT t.trainer_id, t.specialty, t.hire_date,
-           u.user_id, u.full_name, u.email, u.phone, u.status
-      FROM trainers t
-      JOIN users u ON u.user_id = t.user_id
-     ORDER BY t.trainer_id
+    SELECT t.UserID AS trainer_id,
+           t.Specialty AS specialty,
+           t.HireDate AS hire_date,
+           u.UserID AS user_id,
+           u.FullName AS full_name,
+           u.Email AS email,
+           u.Phone AS phone,
+           LOWER(u.Status) AS status
+      FROM trainer t
+      JOIN \`user\` u ON u.UserID = t.UserID
+     ORDER BY t.UserID
   `);
 
   const trainers = user.role === 'member'
