@@ -19,14 +19,16 @@ const mocks = vi.hoisted(() => {
       query: vi.fn()
     },
     requireDemoUser: vi.fn(),
-    requireRole: vi.fn()
+    requireRole: vi.fn(),
+    hashPassword: vi.fn(async () => 'hashed-password')
   };
 });
 
 vi.mock('../src/db.js', () => ({ pool: mocks.pool }));
 vi.mock('../src/auth.js', () => ({
   requireDemoUser: mocks.requireDemoUser,
-  requireRole: mocks.requireRole
+  requireRole: mocks.requireRole,
+  hashPassword: mocks.hashPassword
 }));
 
 const { sessionsRouter } = await import('../src/routes/sessions.js');
@@ -310,6 +312,35 @@ describe('admin workflow routes', () => {
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.not.stringContaining('FROM users'));
   });
 
+  it('updates user account status as admin', async () => {
+    mocks.pool.query.mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+    const response = await request(createApp())
+      .patch('/api/users/2/status')
+      .send({ status: 'suspended' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.user).toEqual({ user_id: 2, status: 'suspended' });
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('UPDATE `user` SET Status = ? WHERE UserID = ?'), ['Suspended', 2]);
+  });
+
+  it('updates member profile contact and status fields as admin', async () => {
+    mocks.connection.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('UPDATE `user`')) return [{ affectedRows: 1 }];
+      if (sql.includes('UPDATE member')) return [{ affectedRows: 1 }];
+      return [[]];
+    });
+
+    const response = await request(createApp())
+      .patch('/api/members/2')
+      .send({ full_name: 'Member Two', email: 'member2@example.com', phone: '0502222222', status: 'inactive', gender: 'Female' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.member).toEqual({ member_id: 2, status: 'inactive' });
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('UPDATE `user`'), ['Member Two', 'member2@example.com', '0502222222', 'Inactive', 2]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('UPDATE member SET Gender = ? WHERE UserID = ?'), ['Female', 2]);
+  });
+
   it('lists trainers from gym schema and hides contact fields from members', async () => {
     mocks.requireDemoUser.mockResolvedValueOnce({ user_id: 2, username: 'member1', role: 'member', full_name: 'Member One', email: null, status: 'active', member_id: 2 });
     mocks.pool.query.mockResolvedValueOnce([[{
@@ -337,6 +368,40 @@ describe('admin workflow routes', () => {
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('t.UserID AS trainer_id'));
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('FROM trainer t'));
     expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('JOIN `user` u ON u.UserID = t.UserID'));
+  });
+
+  it('creates trainer accounts as admin', async () => {
+    mocks.connection.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('INSERT INTO `user`')) return [{ insertId: 8 }];
+      if (sql.includes('INSERT INTO trainer')) return [{ affectedRows: 1 }];
+      return [[]];
+    });
+
+    const response = await request(createApp())
+      .post('/api/trainers')
+      .send({ username: 'coach8', password: 'password123', full_name: 'Coach Eight', email: 'coach8@example.com', phone: '0508888888', specialty: 'Strength' });
+
+    expect(response.status).toBe(201);
+    expect(response.body.trainer).toMatchObject({ trainer_id: 8, username: 'coach8', full_name: 'Coach Eight', specialty: 'Strength', status: 'active' });
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('INSERT INTO `user`'), ['coach8', expect.any(String), 'Coach Eight', 'coach8@example.com', '0508888888']);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('INSERT INTO trainer'), [8, 'Strength']);
+  });
+
+  it('updates trainer profile fields as admin', async () => {
+    mocks.connection.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('UPDATE `user`')) return [{ affectedRows: 1 }];
+      if (sql.includes('UPDATE trainer')) return [{ affectedRows: 1 }];
+      return [[]];
+    });
+
+    const response = await request(createApp())
+      .patch('/api/trainers/8')
+      .send({ full_name: 'Coach Eight', email: 'coach8@example.com', phone: '0508888888', status: 'active', specialty: 'Mobility' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.trainer).toEqual({ trainer_id: 8, status: 'active' });
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('UPDATE `user`'), ['Coach Eight', 'coach8@example.com', '0508888888', 'Active', 8]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('UPDATE trainer SET Specialty = ? WHERE UserID = ?'), ['Mobility', 8]);
   });
 
   it('lists plans from membershipplan with snake case aliases', async () => {

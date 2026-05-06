@@ -1,9 +1,28 @@
 import { Router } from 'express';
+import type { ResultSetHeader } from 'mysql2';
 import { requireDemoUser, requireRole } from '../auth.js';
 import { pool } from '../db.js';
-import { asyncHandler } from '../http.js';
+import { HttpError, asyncHandler } from '../http.js';
 
 export const membersRouter = Router();
+
+const userStatuses = ['active', 'inactive', 'suspended'] as const;
+
+function parseId(value: unknown, label: string) {
+  const id = Number(value);
+  if (!Number.isInteger(id) || id <= 0) throw new HttpError(400, `Valid ${label} is required`);
+  return id;
+}
+
+function parseStatus(value: unknown) {
+  const status = String(value ?? '').trim().toLowerCase();
+  if (!userStatuses.includes(status as typeof userStatuses[number])) throw new HttpError(400, 'Status must be active, inactive, or suspended');
+  return status;
+}
+
+function toDbStatus(status: string) {
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+}
 
 membersRouter.get('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
@@ -24,4 +43,35 @@ membersRouter.get('/', asyncHandler(async (req, res) => {
   `);
 
   res.json({ members: rows });
+}));
+
+membersRouter.patch('/:id', asyncHandler(async (req, res) => {
+  const user = await requireDemoUser(req);
+  requireRole(user, ['admin']);
+  const memberId = parseId(req.params.id, 'member id');
+  const fullName = String(req.body.full_name ?? '').trim();
+  const email = String(req.body.email ?? '').trim() || null;
+  const phone = String(req.body.phone ?? '').trim() || null;
+  const status = parseStatus(req.body.status);
+  const gender = String(req.body.gender ?? '').trim();
+  if (!fullName || !gender) throw new HttpError(400, 'Full name and gender are required');
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [userResult] = await connection.query<ResultSetHeader>(
+      'UPDATE `user` SET FullName = ?, Email = ?, Phone = ?, Status = ? WHERE UserID = ?',
+      [fullName, email, phone, toDbStatus(status), memberId]
+    );
+    if (userResult.affectedRows === 0) throw new HttpError(404, 'Member was not found');
+    const [memberResult] = await connection.query<ResultSetHeader>('UPDATE member SET Gender = ? WHERE UserID = ?', [gender, memberId]);
+    if (memberResult.affectedRows === 0) throw new HttpError(404, 'Member was not found');
+    await connection.commit();
+    res.json({ member: { member_id: memberId, status } });
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }));
