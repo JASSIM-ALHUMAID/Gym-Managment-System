@@ -15,7 +15,8 @@ type SessionInput = {
 };
 
 type CountRow = { count: number } & RowDataPacket;
-type SessionBookedCountRow = { session_id: number; count: number } & RowDataPacket;
+type SessionBookedCountRow = { session_id: number; count: number; status?: string } & RowDataPacket;
+type SessionStatusRow = { status: string } & RowDataPacket;
 
 const sessionStatuses = ['scheduled', 'completed', 'cancelled'] as const;
 
@@ -69,16 +70,20 @@ async function trainerExists(trainerId: number) {
   return (rows[0]?.count ?? 0) > 0;
 }
 
-async function getBookedCount(sessionId: number) {
+async function getSessionUpdateState(sessionId: number) {
   const [rows] = await pool.query<SessionBookedCountRow[]>(
-    `SELECT s.SessionID AS session_id, COUNT(b.BookingID) AS count
+    `SELECT s.SessionID AS session_id, s.Status AS status, COUNT(b.BookingID) AS count
        FROM \`session\` s
        LEFT JOIN booking b ON b.SessionID = s.SessionID AND b.BookingStatus IN ('Confirmed', 'Booked')
       WHERE s.SessionID = ?
       GROUP BY s.SessionID`,
     [sessionId]
   );
-  return rows[0]?.count ?? null;
+  return rows[0] ?? null;
+}
+
+function normalizeStatus(value: string | undefined) {
+  return String(value ?? '').trim().toLowerCase();
 }
 
 function toDbStatus(status: string) {
@@ -154,10 +159,11 @@ sessionsRouter.put('/:id', asyncHandler(async (req, res) => {
   const sessionId = Number(req.params.id);
   if (!Number.isInteger(sessionId) || sessionId <= 0) throw new HttpError(400, 'Valid session id is required');
   const input = parseSessionInput(req.body);
-  const bookedCount = await getBookedCount(sessionId);
-  if (bookedCount === null) throw new HttpError(404, 'Session was not found');
+  const sessionState = await getSessionUpdateState(sessionId);
+  if (sessionState === null) throw new HttpError(404, 'Session was not found');
+  if (sessionState.status && normalizeStatus(sessionState.status) !== 'scheduled') throw new HttpError(409, 'Only scheduled sessions can be updated');
   if (!await trainerExists(input.trainer_id)) throw new HttpError(404, 'Trainer was not found');
-  if (input.capacity < bookedCount) throw new HttpError(400, 'Capacity cannot be less than current booked count');
+  if (input.capacity < sessionState.count) throw new HttpError(400, 'Capacity cannot be less than current booked count');
 
   const [result] = await pool.query<ResultSetHeader>(
     'UPDATE `session` SET TrainerUserID = ?, SessionTitle = ?, SessionType = ?, SessionDate = ?, StartTime = ?, EndTime = ?, Capacity = ? WHERE SessionID = ?',
@@ -175,6 +181,13 @@ sessionsRouter.patch('/:id/status', asyncHandler(async (req, res) => {
   if (!Number.isInteger(sessionId) || sessionId <= 0) throw new HttpError(400, 'Valid session id is required');
   const status = String(req.body.status ?? '').trim();
   if (!sessionStatuses.includes(status as typeof sessionStatuses[number])) throw new HttpError(400, 'Status must be scheduled, completed, or cancelled');
+
+  const [sessionRows] = await pool.query<SessionStatusRow[]>('SELECT Status AS status FROM `session` WHERE SessionID = ? LIMIT 1', [sessionId]);
+  const currentStatus = sessionRows[0]?.status;
+  if (!currentStatus) throw new HttpError(404, 'Session was not found');
+  if (normalizeStatus(currentStatus) === 'completed') throw new HttpError(409, 'Completed sessions cannot change status');
+  if (normalizeStatus(currentStatus) === 'cancelled') throw new HttpError(409, 'Cancelled sessions cannot change status');
+  if (status === 'scheduled' && normalizeStatus(currentStatus) !== 'scheduled') throw new HttpError(409, 'Only scheduled sessions can be completed or cancelled');
 
   const [result] = await pool.query<ResultSetHeader>('UPDATE `session` SET Status = ? WHERE SessionID = ?', [toDbStatus(status), sessionId]);
   if (result.affectedRows === 0) throw new HttpError(404, 'Session was not found');

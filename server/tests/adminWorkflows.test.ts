@@ -131,6 +131,37 @@ describe('admin workflow routes', () => {
     expect(mocks.pool.query).toHaveBeenLastCalledWith(expect.stringContaining('UPDATE `session`'), [1, 'Strength Lab', 'Personal Training', '2026-05-01', '09:00:00', '10:00:00', 10, 12]);
   });
 
+  it('rejects updates to completed sessions', async () => {
+    mocks.pool.query.mockResolvedValueOnce([[{ session_id: 12, count: 1, status: 'Completed' }]]);
+
+    const response = await request(createApp())
+      .put('/api/sessions/12')
+      .send({
+        trainer_id: 1,
+        session_title: 'Strength Lab',
+        session_type: 'Personal Training',
+        session_date: '2026-05-01',
+        start_time: '09:00:00',
+        end_time: '10:00:00',
+        capacity: 10
+      });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: 'Only scheduled sessions can be updated' });
+  });
+
+  it('rejects moving completed sessions back to scheduled', async () => {
+    mocks.pool.query.mockResolvedValueOnce([[{ status: 'Completed' }]]);
+
+    const response = await request(createApp())
+      .patch('/api/sessions/12/status')
+      .send({ status: 'scheduled' });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: 'Completed sessions cannot change status' });
+    expect(mocks.pool.query).toHaveBeenCalledOnce();
+  });
+
   it('approves pending subscriptions by creating a pending payment', async () => {
     mocks.connection.query.mockImplementation(async (sql: string) => {
       if (sql.includes('FROM subscription') && sql.includes('JOIN membershipplan')) return [[{ subscription_id: 7, member_id: 3, price: '150.00', status: 'Pending' }]];
