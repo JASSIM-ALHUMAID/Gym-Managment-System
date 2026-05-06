@@ -44,6 +44,14 @@ The database also uses `CHECK` constraints for core data integrity:
 
 Authenticates an active user by username, derives the user's role from `staff`, `trainer`, or `member`, then verifies the bcrypt password before issuing a JWT.
 
+Seeded demo accounts use password `password123`:
+
+- `admin1` / `password123`
+- `ahmed_m` / `password123`
+- `sara_a` / `password123`
+- `khalid_t` / `password123`
+- `nora_t` / `password123`
+
 ```sql
 SELECT u.UserID AS user_id,
        u.Username AS username,
@@ -268,20 +276,13 @@ INSERT INTO subscription (MemberUserID, PlanID, StartDate, EndDate, Status)
 VALUES (?, ?, ?, ?, 'Pending');
 ```
 
-Activate subscription query:
+Approve subscription query:
+
+Approving a pending subscription creates a pending payment for the plan price. The subscription remains pending until that payment is marked paid.
 
 ```sql
-UPDATE subscription
-   SET Status = 'Active'
- WHERE SubscriptionID = ? AND Status = 'Pending';
-```
-
-Activating a pending subscription also cancels the member's other active subscriptions:
-
-```sql
-UPDATE subscription
-   SET Status = 'Cancelled'
- WHERE MemberUserID = ? AND SubscriptionID <> ? AND Status = 'Active';
+INSERT INTO payment (SubscriptionID, Amount, PaymentDate, PaymentMethod, PaymentStatus)
+VALUES (?, ?, CURDATE(), NULL, 'Pending');
 ```
 
 Cancel subscription query:
@@ -294,7 +295,27 @@ UPDATE subscription
 
 ### Payments
 
-Members view payments for their own subscriptions, while admins view all payments with subscription, plan, and member details.
+Members view payments for their own subscriptions, while admins view all payments with subscription, plan, and member details. Payments are manual records; there is no payment gateway integration.
+
+When an admin marks a payment as paid, the system activates the related pending subscription and cancels the member's other active subscriptions:
+
+```sql
+UPDATE payment
+   SET PaymentStatus = 'Paid', PaymentMethod = ?
+ WHERE PaymentID = ?;
+
+UPDATE subscription
+   SET Status = 'Cancelled'
+ WHERE MemberUserID = ? AND SubscriptionID <> ? AND Status = 'Active';
+
+UPDATE subscription
+   SET Status = 'Active'
+ WHERE SubscriptionID = ? AND Status = 'Pending';
+```
+
+Failed payments remain attached to the pending subscription so staff can retry or update the payment later.
+
+Members can book sessions only after a subscription is active and has a paid payment.
 
 ```sql
 SELECT pay.PaymentID AS payment_id,
