@@ -333,12 +333,22 @@ describe('admin workflow routes', () => {
 
     const response = await request(createApp())
       .patch('/api/members/2')
-      .send({ full_name: 'Member Two', email: 'member2@example.com', phone: '0502222222', status: 'inactive', gender: 'Female' });
+      .send({ full_name: 'Member Two', email: 'member2@example.com', phone: '0502222222', status: 'inactive', gender: 'female' });
 
     expect(response.status).toBe(200);
     expect(response.body.member).toEqual({ member_id: 2, status: 'inactive' });
     expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('UPDATE `user`'), ['Member Two', 'member2@example.com', '0502222222', 'Inactive', 2]);
     expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('UPDATE member SET Gender = ? WHERE UserID = ?'), ['Female', 2]);
+  });
+
+  it('rejects unsupported member gender updates as admin', async () => {
+    const response = await request(createApp())
+      .patch('/api/members/2')
+      .send({ full_name: 'Member Two', email: 'member2@example.com', phone: '0502222222', status: 'inactive', gender: 'other' });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: 'Gender must be male or female' });
+    expect(mocks.pool.getConnection).not.toHaveBeenCalled();
   });
 
   it('lists trainers from gym schema and hides contact fields from members', async () => {

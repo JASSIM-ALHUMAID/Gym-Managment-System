@@ -10,6 +10,12 @@ function validatePassword(password: string) {
   if (password.length < 8) throw new HttpError(400, 'Password must be at least 8 characters');
 }
 
+function parseGender(value: string) {
+  const gender = value.trim().toLowerCase();
+  if (!['male', 'female'].includes(gender)) throw new HttpError(400, 'Gender must be male or female');
+  return gender === 'male' ? 'Male' : 'Female';
+}
+
 function isDuplicateKeyError(error: unknown) {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === 'ER_DUP_ENTRY';
 }
@@ -39,7 +45,7 @@ authRouter.post('/register', asyncHandler(async (req, res) => {
 
   if (!username || !fullName || !gender) throw new HttpError(400, 'Username, full name, and gender are required');
   validatePassword(password);
-  if (!['male', 'female', 'other'].includes(gender)) throw new HttpError(400, 'Gender must be male, female, or other');
+  const dbGender = parseGender(gender);
 
   const existingUser = await findDemoUser(username);
   if (existingUser) throw new HttpError(409, 'Username is already taken');
@@ -56,7 +62,7 @@ authRouter.post('/register', asyncHandler(async (req, res) => {
     const userId = userResult.insertId;
     await connection.query<ResultSetHeader>(
       'INSERT INTO member (UserID, Gender, JoinDate) VALUES (?, ?, CURRENT_DATE)',
-      [userId, gender]
+      [userId, dbGender]
     );
     await connection.commit();
 

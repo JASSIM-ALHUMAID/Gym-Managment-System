@@ -14,6 +14,11 @@ describe('database schema constraints', () => {
     expect(schema).toContain("CONSTRAINT `chk_attendance_status` CHECK (`AttendanceStatus` in ('Present','Absent','Late'))");
   });
 
+  it('restricts member gender to male and female values', () => {
+    expect(schema).toContain('`Gender` varchar(20) NOT NULL');
+    expect(schema).toContain("CONSTRAINT `chk_member_gender` CHECK (`Gender` in ('Male','Female'))");
+  });
+
   it('requires workflow status columns and applies logical defaults', () => {
     expect(schema).toContain('`AttendanceStatus` varchar(20) NOT NULL');
     expect(schema).toContain("`BookingStatus` varchar(20) NOT NULL DEFAULT 'Confirmed'");

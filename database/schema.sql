@@ -63,10 +63,11 @@ INSERT INTO `booking` (`BookingID`, `MemberUserID`, `SessionID`, `BookingDate`, 
 -- Dumping structure for table gym_management.member
 CREATE TABLE IF NOT EXISTS `member` (
   `UserID` int(11) NOT NULL,
-  `Gender` varchar(20) DEFAULT NULL,
+  `Gender` varchar(20) NOT NULL,
   `JoinDate` date NOT NULL,
   PRIMARY KEY (`UserID`),
-  CONSTRAINT `fk_member_user` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `fk_member_user` FOREIGN KEY (`UserID`) REFERENCES `user` (`UserID`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `chk_member_gender` CHECK (`Gender` in ('Male','Female'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_general_ci;
 
 -- Dumping data for table gym_management.member: ~2 rows (approximately)

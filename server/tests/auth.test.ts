@@ -174,7 +174,7 @@ describe('real auth routes', () => {
         full_name: 'New Member',
         email: 'new@example.com',
         phone: '0509999999',
-        gender: 'other'
+        gender: 'female'
       });
 
     expect(response.status).toBe(201);
@@ -182,7 +182,7 @@ describe('real auth routes', () => {
     expect(response.body.user).toMatchObject({ user_id: 9, username: 'new_member', role: 'member', member_id: 9 });
     expect(mocks.connection.query.mock.calls[0][0]).toContain('INSERT INTO `user`');
     expect(mocks.connection.query.mock.calls[1][0]).toBe('INSERT INTO member (UserID, Gender, JoinDate) VALUES (?, ?, CURRENT_DATE)');
-    expect(mocks.connection.query.mock.calls[1][1]).toEqual([9, 'other']);
+    expect(mocks.connection.query.mock.calls[1][1]).toEqual([9, 'Female']);
     const insertedUserParams = mocks.connection.query.mock.calls[0][1] as unknown[];
     expect(insertedUserParams[1]).not.toBe('password123');
     await expect(bcrypt.compare('password123', String(insertedUserParams[1]))).resolves.toBe(true);
@@ -201,12 +201,29 @@ describe('real auth routes', () => {
         full_name: 'New Member',
         email: 'new@example.com',
         phone: '0509999999',
-        gender: 'other'
+        gender: 'female'
       });
 
     expect(response.status).toBe(409);
     expect(response.body).toEqual({ error: 'Username or email is already taken' });
     expect(mocks.connection.rollback).toHaveBeenCalledOnce();
+  });
+
+  it('rejects unsupported registration gender values', async () => {
+    const response = await request(createApp())
+      .post('/api/auth/register')
+      .send({
+        username: 'new_member',
+        password: 'password123',
+        full_name: 'New Member',
+        email: 'new@example.com',
+        phone: '0509999999',
+        gender: 'other'
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: 'Gender must be male or female' });
+    expect(mocks.connection.query).not.toHaveBeenCalled();
   });
 
   it('returns the current user for a valid bearer token', async () => {

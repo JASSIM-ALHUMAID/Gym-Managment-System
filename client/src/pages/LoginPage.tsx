@@ -25,7 +25,7 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [gender, setGender] = useState('other');
+  const [gender, setGender] = useState('male');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -100,7 +100,6 @@ export default function LoginPage() {
               <select id="gender" name="gender" value={gender} onChange={(event) => setGender(event.target.value)}>
                 <option value="male">Male</option>
                 <option value="female">Female</option>
-                <option value="other">Other</option>
               </select>
             </>
           ) : null}

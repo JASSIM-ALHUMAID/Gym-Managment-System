@@ -24,6 +24,12 @@ function toDbStatus(status: string) {
   return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 }
 
+function parseGender(value: unknown) {
+  const gender = String(value ?? '').trim().toLowerCase();
+  if (!['male', 'female'].includes(gender)) throw new HttpError(400, 'Gender must be male or female');
+  return gender === 'male' ? 'Male' : 'Female';
+}
+
 membersRouter.get('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
   requireRole(user, ['admin']);
@@ -53,8 +59,8 @@ membersRouter.patch('/:id', asyncHandler(async (req, res) => {
   const email = String(req.body.email ?? '').trim() || null;
   const phone = String(req.body.phone ?? '').trim() || null;
   const status = parseStatus(req.body.status);
-  const gender = String(req.body.gender ?? '').trim();
-  if (!fullName || !gender) throw new HttpError(400, 'Full name and gender are required');
+  const gender = parseGender(req.body.gender);
+  if (!fullName) throw new HttpError(400, 'Full name and gender are required');
 
   const connection = await pool.getConnection();
   try {
