@@ -24,8 +24,8 @@ type ResourceConfig = {
 };
 
 type TrainerRow = ResourceRow & { trainer_id: number; full_name: string };
-type AdminTab = 'overview' | 'members' | 'plans' | 'sessions' | 'payments' | 'reports';
-type ControlDialog = 'plan' | 'session' | null;
+type AdminTab = 'overview' | 'users' | 'members' | 'trainers' | 'plans' | 'sessions' | 'payments' | 'reports';
+type ControlDialog = 'plan' | 'session' | 'trainer' | null;
 
 const emptyPlanForm = { plan_id: '', plan_name: '', duration_months: '1', price: '', description: '' };
 const emptySessionForm = {
@@ -37,6 +37,7 @@ const emptySessionForm = {
   end_time: '',
   capacity: '10'
 };
+const emptyTrainerForm = { username: '', password: '', full_name: '', email: '', phone: '', specialty: '' };
 
 function labelFor(key: string) {
   return key.replace(/_/g, ' ');
@@ -186,6 +187,7 @@ export default function AdminDashboard() {
   const [message, setMessage] = useState<string | null>(null);
   const [planForm, setPlanForm] = useState(emptyPlanForm);
   const [sessionForm, setSessionForm] = useState(emptySessionForm);
+  const [trainerForm, setTrainerForm] = useState(emptyTrainerForm);
   const [dashboardTab, setDashboardTab] = useState<AdminTab>('overview');
   const [controlDialog, setControlDialog] = useState<ControlDialog>(null);
 
@@ -429,6 +431,27 @@ export default function AdminDashboard() {
     }
   }
 
+  async function submitTrainer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await request('/trainers', { method: 'POST', body: JSON.stringify(trainerForm) });
+      if (!mountedRef.current) return;
+      setMessage('Trainer account created.');
+      setTrainerForm(emptyTrainerForm);
+      setControlDialog(null);
+      const trainerData = await request<{ trainers: TrainerRow[] }>('/trainers');
+      if (mountedRef.current) setTrainers(trainerData.trainers);
+      await openWorkspace('trainers', 'trainers');
+    } catch (err) {
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to save trainer');
+    } finally {
+      if (mountedRef.current) setSaving(false);
+    }
+  }
+
   async function updateSubscription(subscriptionId: number, action: 'activate' | 'cancel') {
     setSaving(true);
     setError(null);
@@ -436,13 +459,64 @@ export default function AdminDashboard() {
     try {
       await request(`/subscriptions/${subscriptionId}/${action}`, { method: 'PATCH' });
       if (!mountedRef.current) return;
-      setMessage(action === 'activate' ? 'Subscription activated.' : 'Subscription cancelled.');
+      setMessage(action === 'activate' ? 'Payment request created. Mark payment paid to activate the subscription.' : 'Subscription cancelled.');
       setOverviewPendingSubscriptions((current) => current.filter((row) => Number(row.subscription_id) !== subscriptionId));
       await loadDashboard();
       if (!mountedRef.current) return;
       await openWorkspace('plans', 'subscriptions');
     } catch (err) {
       if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to update subscription');
+    } finally {
+      if (mountedRef.current) setSaving(false);
+    }
+  }
+
+  async function updateUserStatus(userId: number, status: 'active' | 'inactive' | 'suspended') {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await request(`/users/${userId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      if (!mountedRef.current) return;
+      setMessage('User status updated.');
+      await openWorkspace('users', 'users');
+    } catch (err) {
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to update user');
+    } finally {
+      if (mountedRef.current) setSaving(false);
+    }
+  }
+
+  async function updatePaymentStatus(paymentId: number, payment_status: 'paid' | 'failed') {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const payment_method = payment_status === 'paid' ? 'Manual' : undefined;
+      await request(`/payments/${paymentId}/status`, { method: 'PATCH', body: JSON.stringify({ payment_status, payment_method }) });
+      if (!mountedRef.current) return;
+      setMessage(payment_status === 'paid' ? 'Payment marked paid and subscription activated.' : 'Payment marked failed.');
+      await loadDashboard();
+      await openWorkspace('payments', 'payments');
+    } catch (err) {
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to update payment');
+    } finally {
+      if (mountedRef.current) setSaving(false);
+    }
+  }
+
+  async function updateSessionStatus(sessionId: number, status: 'completed' | 'cancelled') {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await request(`/sessions/${sessionId}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      if (!mountedRef.current) return;
+      setMessage(status === 'completed' ? 'Session completed.' : 'Session cancelled.');
+      await loadDashboard();
+      await openWorkspace('sessions', 'sessions');
+    } catch (err) {
+      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Failed to update session');
     } finally {
       if (mountedRef.current) setSaving(false);
     }
@@ -463,6 +537,46 @@ export default function AdminDashboard() {
         }
       ]
     : selectedResource.columns;
+  const userColumns: ResourceColumn<ResourceRow>[] = [
+    ...(baseResources.find((resource) => resource.key === 'users')?.columns ?? []),
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (row) => (
+        <div className="row-actions">
+          <button className="small-button" type="button" disabled={saving || row.status === 'active'} onClick={() => updateUserStatus(Number(row.user_id), 'active')}>Activate</button>
+          <button className="small-button" type="button" disabled={saving || row.status === 'inactive'} onClick={() => updateUserStatus(Number(row.user_id), 'inactive')}>Deactivate</button>
+          <button className="small-button danger" type="button" disabled={saving || row.status === 'suspended'} onClick={() => updateUserStatus(Number(row.user_id), 'suspended')}>Suspend</button>
+        </div>
+      )
+    }
+  ];
+  const sessionColumnsWithActions: ResourceColumn<ResourceRow>[] = [
+    ...(baseResources.find((resource) => resource.key === 'sessions')?.columns ?? []),
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (row) => (
+        <div className="row-actions">
+          <button className="small-button" type="button" disabled={saving || row.status !== 'scheduled'} onClick={() => updateSessionStatus(Number(row.session_id), 'completed')}>Complete</button>
+          <button className="small-button danger" type="button" disabled={saving || row.status !== 'scheduled'} onClick={() => updateSessionStatus(Number(row.session_id), 'cancelled')}>Cancel</button>
+        </div>
+      )
+    }
+  ];
+  const paymentColumns: ResourceColumn<ResourceRow>[] = [
+    ...(baseResources.find((resource) => resource.key === 'payments')?.columns ?? []),
+    {
+      key: 'actions',
+      label: 'Actions',
+      render: (row) => (
+        <div className="row-actions">
+          <button className="small-button" type="button" disabled={saving || row.payment_status === 'paid'} onClick={() => updatePaymentStatus(Number(row.payment_id), 'paid')}>Mark paid</button>
+          <button className="small-button danger" type="button" disabled={saving || row.payment_status === 'failed' || row.payment_status === 'paid'} onClick={() => updatePaymentStatus(Number(row.payment_id), 'failed')}>Mark failed</button>
+        </div>
+      )
+    }
+  ];
 
   const pendingRequests = selectedResource.key === 'subscriptions'
     ? rows.filter((row) => row.status === 'pending')
@@ -523,7 +637,9 @@ export default function AdminDashboard() {
 
       <section className="tabs dashboard-tabs" aria-label="Dashboard sections">
         <button type="button" className={dashboardTab === 'overview' ? 'active' : ''} aria-pressed={dashboardTab === 'overview'} onClick={() => setDashboardTab('overview')}>Overview</button>
+        <button type="button" className={dashboardTab === 'users' ? 'active' : ''} aria-pressed={dashboardTab === 'users'} onClick={() => void openWorkspace('users', 'users')}>Users</button>
         <button type="button" className={dashboardTab === 'members' ? 'active' : ''} aria-pressed={dashboardTab === 'members'} onClick={() => void openWorkspace('members', 'members')}>Members</button>
+        <button type="button" className={dashboardTab === 'trainers' ? 'active' : ''} aria-pressed={dashboardTab === 'trainers'} onClick={() => void openWorkspace('trainers', 'trainers')}>Trainers</button>
         <button type="button" className={dashboardTab === 'plans' ? 'active' : ''} aria-pressed={dashboardTab === 'plans'} onClick={() => void openWorkspace('plans', 'subscriptions')}>Plans</button>
         <button type="button" className={dashboardTab === 'sessions' ? 'active' : ''} aria-pressed={dashboardTab === 'sessions'} onClick={() => void openWorkspace('sessions', 'sessions')}>Sessions</button>
         <button type="button" className={dashboardTab === 'payments' ? 'active' : ''} aria-pressed={dashboardTab === 'payments'} onClick={() => void openWorkspace('payments', 'payments')}>Payments</button>
@@ -608,6 +724,15 @@ export default function AdminDashboard() {
         <ResourceTable title="Member records" rows={memberRows} columns={baseResources.find((resource) => resource.key === 'members')?.columns ?? []} loading={loading} error={error} />
       </> : null}
 
+      {dashboardTab === 'users' ? <ResourceTable title="User accounts" rows={selectedResource.key === 'users' ? rows : []} columns={userColumns} loading={loading} error={error} getRowKey={(row) => Number(row.user_id)} /> : null}
+
+      {dashboardTab === 'trainers' ? <>
+        <div className="workspace-action-row">
+          <button type="button" className="small-button" onClick={() => setControlDialog('trainer')}>Create trainer</button>
+        </div>
+        <ResourceTable title="Trainer records" rows={selectedResource.key === 'trainers' ? rows : []} columns={baseResources.find((resource) => resource.key === 'trainers')?.columns ?? []} loading={loading} error={error} getRowKey={(row) => Number(row.trainer_id)} />
+      </> : null}
+
       {dashboardTab === 'plans' ? <>
         <section className="panel request-board">
           <div className="section-heading">
@@ -659,11 +784,11 @@ export default function AdminDashboard() {
         <div className="workspace-action-row">
           <button type="button" className="small-button" onClick={() => setControlDialog('session')}>Create or update session</button>
         </div>
-        <ResourceTable title="Scheduled sessions" rows={selectedResource.key === 'sessions' ? rows : []} columns={baseResources.find((resource) => resource.key === 'sessions')?.columns ?? []} loading={loading} getRowKey={(row) => Number(row.session_id)} />
+        <ResourceTable title="Scheduled sessions" rows={selectedResource.key === 'sessions' ? rows : []} columns={sessionColumnsWithActions} loading={loading} getRowKey={(row) => Number(row.session_id)} />
         <ResourceTable title="Bookings review" rows={bookingRows} columns={baseResources.find((resource) => resource.key === 'bookings')?.columns ?? []} loading={loading && bookingRows.length === 0} getRowKey={(row) => Number(row.booking_id)} />
       </> : null}
 
-      {dashboardTab === 'payments' ? <ResourceTable title="Payments" rows={selectedResource.key === 'payments' ? rows : []} columns={baseResources.find((resource) => resource.key === 'payments')?.columns ?? []} loading={loading} error={error} getRowKey={(row) => Number(row.payment_id)} /> : null}
+      {dashboardTab === 'payments' ? <ResourceTable title="Payments" rows={selectedResource.key === 'payments' ? rows : []} columns={paymentColumns} loading={loading} error={error} getRowKey={(row) => Number(row.payment_id)} /> : null}
 
       {dashboardTab === 'reports' ? <ResourceTable title="Attendance reports" rows={selectedResource.key === 'attendance' ? rows : []} columns={baseResources.find((resource) => resource.key === 'attendance')?.columns ?? []} loading={loading} error={error} getRowKey={(row) => Number(row.attendance_id)} /> : null}
 
@@ -672,7 +797,7 @@ export default function AdminDashboard() {
           <div className="section-heading">
             <div>
               <p className="eyebrow">Admin control</p>
-              <h2 id={`${controlDialog}DialogTitle`}>{controlDialog === 'plan' ? 'Create or update plan' : 'Create or update session'}</h2>
+              <h2 id={`${controlDialog}DialogTitle`}>{controlDialog === 'plan' ? 'Create or update plan' : controlDialog === 'session' ? 'Create or update session' : 'Create trainer'}</h2>
             </div>
             <button type="button" className="small-button" onClick={() => setControlDialog(null)}>Close</button>
           </div>
@@ -710,6 +835,22 @@ export default function AdminDashboard() {
             <label htmlFor="sessionCapacity">Capacity</label>
             <input id="sessionCapacity" type="number" min="1" value={sessionForm.capacity} onChange={(event) => setSessionForm((current) => ({ ...current, capacity: event.target.value }))} required />
             <button type="submit" disabled={saving}>{sessionForm.session_id ? 'Update session' : 'Create session'}</button>
+          </form> : null}
+
+          {controlDialog === 'trainer' ? <form className="control-form" onSubmit={submitTrainer}>
+            <label htmlFor="trainerUsername">Username</label>
+            <input id="trainerUsername" value={trainerForm.username} onChange={(event) => setTrainerForm((current) => ({ ...current, username: event.target.value }))} required />
+            <label htmlFor="trainerPassword">Temporary password</label>
+            <input id="trainerPassword" type="password" minLength={8} value={trainerForm.password} onChange={(event) => setTrainerForm((current) => ({ ...current, password: event.target.value }))} required />
+            <label htmlFor="trainerName">Full name</label>
+            <input id="trainerName" value={trainerForm.full_name} onChange={(event) => setTrainerForm((current) => ({ ...current, full_name: event.target.value }))} required />
+            <label htmlFor="trainerEmail">Email</label>
+            <input id="trainerEmail" type="email" value={trainerForm.email} onChange={(event) => setTrainerForm((current) => ({ ...current, email: event.target.value }))} />
+            <label htmlFor="trainerPhone">Phone</label>
+            <input id="trainerPhone" value={trainerForm.phone} onChange={(event) => setTrainerForm((current) => ({ ...current, phone: event.target.value }))} />
+            <label htmlFor="trainerSpecialty">Specialty</label>
+            <input id="trainerSpecialty" value={trainerForm.specialty} onChange={(event) => setTrainerForm((current) => ({ ...current, specialty: event.target.value }))} />
+            <button type="submit" disabled={saving}>Create trainer</button>
           </form> : null}
         </section>
       </div> : null}

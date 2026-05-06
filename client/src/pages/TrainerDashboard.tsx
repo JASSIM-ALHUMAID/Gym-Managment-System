@@ -163,7 +163,7 @@ export default function TrainerDashboard() {
       .then((data) => {
         if (cancelled) return;
         setAttendance(data.attendance);
-        setStatusByMember(Object.fromEntries(data.attendance.map((row) => [row.member_id, row.attendance_status ?? 'present'])));
+        setStatusByMember(Object.fromEntries(data.attendance.map((row) => [row.member_id, row.attendance_status ?? ''])));
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load attendance');
@@ -277,7 +277,7 @@ export default function TrainerDashboard() {
           </div>
           <select aria-label="Select session to mark attendance" value={selectedSessionId ?? ''} disabled={saving} onChange={(event) => setSelectedSessionId(Number(event.target.value) || null)}>
             <option value="">Select session</option>
-            {sessions.map((session) => (
+            {completedSessions.map((session) => (
               <option key={session.session_id} value={session.session_id}>{formatSessionLabel(session)}</option>
             ))}
           </select>
@@ -295,7 +295,8 @@ export default function TrainerDashboard() {
               {attendance.map((row) => (
                 <label className="inline-field" key={row.member_id}>
                   <span>{row.member_name}</span>
-                  <select value={statusByMember[row.member_id] ?? 'present'} onChange={(event) => setStatusByMember((current) => ({ ...current, [row.member_id]: event.target.value }))}>
+                  <select required value={statusByMember[row.member_id] ?? ''} onChange={(event) => setStatusByMember((current) => ({ ...current, [row.member_id]: event.target.value }))}>
+                    <option value="">Choose status</option>
                     {attendanceStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                   </select>
                 </label>

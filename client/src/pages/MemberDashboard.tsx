@@ -298,7 +298,7 @@ export default function MemberDashboard() {
       {message ? <p className="success" role="status">{message}</p> : null}
 
       {!hasActiveSubscription ? (
-        <p className="empty-state">Choose a plan below and wait for admin approval before booking sessions.</p>
+        <p className="empty-state">Choose a plan below. Booking unlocks after staff creates the payment request and marks it paid.</p>
       ) : null}
 
       <section className="tabs dashboard-tabs" aria-label="Member dashboard sections">
@@ -312,7 +312,7 @@ export default function MemberDashboard() {
         <article className="status-card">
           <p className="eyebrow">Current active plan</p>
           <h2>{activeSubscription ? activeSubscription.plan_name : 'No active plan'}</h2>
-          <p className="muted">{activeSubscription ? `${formatDate(activeSubscription.start_date)} to ${formatDate(activeSubscription.end_date)}` : 'Choose a plan and wait for admin approval.'}</p>
+          <p className="muted">{activeSubscription ? `${formatDate(activeSubscription.start_date)} to ${formatDate(activeSubscription.end_date)}` : 'Choose a plan and wait for payment to be marked paid.'}</p>
           <span className="pill">{activeSubscription ? activeSubscription.status : 'Inactive'}</span>
         </article>
         <article className="status-card">
