@@ -48,27 +48,20 @@ async function getBookedCount(connection: PoolConnection, sessionId: number) {
   return rows[0]?.count ?? 0;
 }
 
-async function getActivePlanName(connection: PoolConnection, memberId: number) {
-  const [rows] = await connection.query<({ plan_name: string } & RowDataPacket)[]>(
-    `SELECT p.PlanName AS plan_name
+async function getActivePaidSubscription(connection: PoolConnection, memberId: number) {
+  const [rows] = await connection.query<({ subscription_id: number } & RowDataPacket)[]>(
+    `SELECT s.SubscriptionID AS subscription_id
        FROM subscription s
-       JOIN membershipplan p ON p.PlanID = s.PlanID
+       JOIN payment pay ON pay.SubscriptionID = s.SubscriptionID
       WHERE s.MemberUserID = ?
         AND s.Status = 'Active'
+        AND pay.PaymentStatus = 'Paid'
         AND CURDATE() BETWEEN s.StartDate AND s.EndDate
       ORDER BY s.StartDate DESC
       LIMIT 1`,
     [memberId]
   );
-  return rows[0]?.plan_name ?? null;
-}
-
-function planIncludesSession(planName: string, sessionType: string) {
-  const plan = planName.toLowerCase();
-  const session = sessionType.toLowerCase();
-  if (plan.includes('premium')) return true;
-  if (plan.includes('plus')) return !session.includes('personal');
-  return false;
+  return rows[0]?.subscription_id ?? null;
 }
 
 async function getExistingBooking(connection: PoolConnection, memberId: number, sessionId: number) {
@@ -87,14 +80,14 @@ bookingsRouter.get('/', asyncHandler(async (req, res) => {
   if (user.role === 'member') {
     if (!user.member_id) throw new HttpError(403, 'Member profile is required');
     const [rows] = await pool.query(
-      `SELECT b.*, s.session_type, s.session_date, s.start_time, s.end_time, s.status AS session_status,
+      `SELECT b.*, s.session_title, s.session_type, s.session_date, s.start_time, s.end_time, s.status AS session_status,
               u.FullName AS trainer_name
          FROM (
            SELECT BookingID AS booking_id, MemberUserID AS member_id, SessionID AS session_id, BookingDate AS booking_date, LOWER(BookingStatus) AS booking_status
              FROM booking
          ) b
          JOIN (
-           SELECT SessionID AS session_id, TrainerUserID AS trainer_id, SessionTitle AS session_type, SessionDate AS session_date, StartTime AS start_time, EndTime AS end_time, LOWER(Status) AS status
+            SELECT SessionID AS session_id, TrainerUserID AS trainer_id, SessionTitle AS session_title, SessionType AS session_type, SessionDate AS session_date, StartTime AS start_time, EndTime AS end_time, LOWER(Status) AS status
              FROM \`session\`
          ) s ON s.session_id = b.session_id
          JOIN trainer t ON t.UserID = s.trainer_id
@@ -109,7 +102,7 @@ bookingsRouter.get('/', asyncHandler(async (req, res) => {
 
   requireRole(user, ['admin']);
   const [rows] = await pool.query(
-    `SELECT b.*, s.session_type, s.session_date, s.start_time, s.end_time, s.status AS session_status,
+    `SELECT b.*, s.session_title, s.session_type, s.session_date, s.start_time, s.end_time, s.status AS session_status,
             member_user.FullName AS member_name, member_user.Email AS member_email,
             trainer_user.FullName AS trainer_name
        FROM (
@@ -119,7 +112,7 @@ bookingsRouter.get('/', asyncHandler(async (req, res) => {
        JOIN member m ON m.UserID = b.member_id
        JOIN \`user\` member_user ON member_user.UserID = m.UserID
        JOIN (
-         SELECT SessionID AS session_id, TrainerUserID AS trainer_id, SessionTitle AS session_type, SessionDate AS session_date, StartTime AS start_time, EndTime AS end_time, LOWER(Status) AS status
+          SELECT SessionID AS session_id, TrainerUserID AS trainer_id, SessionTitle AS session_title, SessionType AS session_type, SessionDate AS session_date, StartTime AS start_time, EndTime AS end_time, LOWER(Status) AS status
            FROM \`session\`
        ) s ON s.session_id = b.session_id
        JOIN trainer t ON t.UserID = s.trainer_id
@@ -145,14 +138,11 @@ bookingsRouter.post('/', asyncHandler(async (req, res) => {
 
     if (!await memberExists(connection, memberId)) throw new HttpError(404, 'Member was not found');
 
-    const activePlanName = user.role === 'member' ? await getActivePlanName(connection, memberId) : null;
-    if (user.role === 'member' && !activePlanName) throw new HttpError(403, 'An active subscription is required to book sessions');
+    const activePaidSubscriptionId = user.role === 'member' ? await getActivePaidSubscription(connection, memberId) : null;
+    if (user.role === 'member' && !activePaidSubscriptionId) throw new HttpError(403, 'An active paid subscription is required to book sessions');
 
     const session = await getLockedSession(connection, sessionId);
     if (!session) throw new HttpError(404, 'Session was not found');
-    if (user.role === 'member' && activePlanName && !planIncludesSession(activePlanName, session.session_type)) {
-      throw new HttpError(403, 'Your current plan does not include this session');
-    }
 
     const existing = await getExistingBooking(connection, memberId, sessionId);
     const bookedCount = await getBookedCount(connection, sessionId);

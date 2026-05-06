@@ -134,7 +134,7 @@ describe('member subscription and booking workflows', () => {
     expect(mocks.connection.release).toHaveBeenCalledOnce();
   });
 
-  it('rejects member bookings without an active subscription', async () => {
+  it('rejects member bookings without an active paid subscription', async () => {
     mocks.connection.query
       .mockResolvedValueOnce([[{ member_id: 1 }]])
       .mockResolvedValueOnce([[{ count: 0 }]]);
@@ -144,35 +144,47 @@ describe('member subscription and booking workflows', () => {
       .send({ session_id: 3 });
 
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({ error: 'An active subscription is required to book sessions' });
+    expect(response.body).toEqual({ error: 'An active paid subscription is required to book sessions' });
     expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM subscription'), [1]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('JOIN membershipplan'), [1]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('JOIN payment'), [1]);
     expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('s.MemberUserID = ?'), [1]);
     expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining("s.Status = 'Active'"), [1]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining("pay.PaymentStatus = 'Paid'"), [1]);
     expect(mocks.connection.rollback).toHaveBeenCalledOnce();
   });
 
-  it('rejects session bookings that are not included in the active plan', async () => {
+  it('lists member bookings with separate session title and type fields', async () => {
+    mocks.pool.query.mockResolvedValueOnce([[]]);
+
+    const response = await request(createApp()).get('/api/bookings');
+
+    expect(response.status).toBe(200);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('SessionTitle AS session_title'), [1]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('SessionType AS session_type'), [1]);
+  });
+
+  it('allows active paid members to book any scheduled session type', async () => {
     mocks.connection.query
       .mockResolvedValueOnce([[{ member_id: 1 }]])
-      .mockResolvedValueOnce([[{ plan_name: 'Monthly Basic' }]])
-      .mockResolvedValueOnce([[{ status: 'Scheduled', capacity: 10, session_type: 'Personal Training' }]]);
+      .mockResolvedValueOnce([[{ subscription_id: 9 }]])
+      .mockResolvedValueOnce([[{ status: 'Scheduled', capacity: 10, session_type: 'Personal Training' }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{ count: 0 }]])
+      .mockResolvedValueOnce([{ insertId: 21 }]);
 
     const response = await request(createApp())
       .post('/api/bookings')
       .send({ session_id: 3 });
 
-    expect(response.status).toBe(403);
-    expect(response.body).toEqual({ error: 'Your current plan does not include this session' });
+    expect(response.status).toBe(201);
     expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining('SessionType AS session_type'), [3]);
     expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining('FROM `session`'), [3]);
-    expect(mocks.connection.rollback).toHaveBeenCalledOnce();
   });
 
   it('creates confirmed bookings in the migrated booking table', async () => {
     mocks.connection.query
       .mockResolvedValueOnce([[{ member_id: 1 }]])
-      .mockResolvedValueOnce([[{ plan_name: 'Monthly Premium' }]])
+      .mockResolvedValueOnce([[{ subscription_id: 9 }]])
       .mockResolvedValueOnce([[{ status: 'Scheduled', capacity: 10, session_type: 'Personal Training' }]])
       .mockResolvedValueOnce([[]])
       .mockResolvedValueOnce([[{ count: 0 }]])
