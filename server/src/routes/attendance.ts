@@ -5,7 +5,7 @@ import { pool } from '../db.js';
 import { HttpError, asyncHandler } from '../http.js';
 import { getMarkedByTrainerId, isAttendanceStatus } from '../workflowRules.js';
 
-type SessionTrainerRow = { trainer_id: number } & RowDataPacket;
+type SessionTrainerRow = { trainer_id: number; status: string } & RowDataPacket;
 type BookingRow = { BookingID: number } & RowDataPacket;
 
 function parseId(value: unknown, label: string) {
@@ -15,8 +15,12 @@ function parseId(value: unknown, label: string) {
 }
 
 async function getSessionTrainer(sessionId: number) {
-  const [rows] = await pool.query<SessionTrainerRow[]>('SELECT TrainerUserID AS trainer_id FROM `session` WHERE SessionID = ? LIMIT 1', [sessionId]);
+  const [rows] = await pool.query<SessionTrainerRow[]>('SELECT TrainerUserID AS trainer_id, Status AS status FROM `session` WHERE SessionID = ? LIMIT 1', [sessionId]);
   return rows[0] ?? null;
+}
+
+function normalizeStatus(value: string | undefined) {
+  return String(value ?? '').trim().toLowerCase();
 }
 
 function assertCanAccessSession(user: Awaited<ReturnType<typeof requireDemoUser>>, sessionTrainerId: number) {
@@ -144,6 +148,7 @@ attendanceRouter.post('/', asyncHandler(async (req, res) => {
   const session = await getSessionTrainer(sessionId);
   if (!session) throw new HttpError(404, 'Session was not found');
   assertCanAccessSession(user, session.trainer_id);
+  if (normalizeStatus(session.status) !== 'completed') throw new HttpError(409, 'Attendance can only be marked for completed sessions');
 
   const [bookingRows] = await pool.query<BookingRow[]>(
     `SELECT BookingID

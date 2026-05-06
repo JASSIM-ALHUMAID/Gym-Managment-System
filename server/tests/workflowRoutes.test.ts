@@ -202,7 +202,7 @@ describe('workflow route handlers', () => {
 
   it('uses the assigned session trainer when attendance submits another trainer', async () => {
     mocks.pool.query
-      .mockResolvedValueOnce([[{ trainer_id: 3 }]])
+      .mockResolvedValueOnce([[{ trainer_id: 3, status: 'Completed' }]])
       .mockResolvedValueOnce([[{ BookingID: 42 }]])
       .mockResolvedValueOnce([{ insertId: 7 }]);
 

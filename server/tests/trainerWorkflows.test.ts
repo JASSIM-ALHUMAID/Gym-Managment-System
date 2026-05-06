@@ -88,7 +88,7 @@ describe('trainer workflow routes', () => {
 
   it('marks attendance through the matching booking id', async () => {
     mocks.pool.query
-      .mockResolvedValueOnce([[{ trainer_id: 1 }]])
+      .mockResolvedValueOnce([[{ trainer_id: 1, status: 'Completed' }]])
       .mockResolvedValueOnce([[{ BookingID: 42 }]])
       .mockResolvedValueOnce([{ insertId: 9 }]);
 
@@ -101,6 +101,18 @@ describe('trainer workflow routes', () => {
     expect(mocks.pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM booking'), [20, 10]);
     expect(mocks.pool.query).toHaveBeenNthCalledWith(2, expect.stringContaining("BookingStatus IN ('Confirmed', 'Booked')"), [20, 10]);
     expect(mocks.pool.query).toHaveBeenNthCalledWith(3, expect.stringContaining('INSERT INTO attendance (BookingID, MarkedByTrainerUserID, AttendanceStatus, MarkedAt)'), [42, 1, 'Present']);
+  });
+
+  it('rejects attendance marking before a session is completed', async () => {
+    mocks.pool.query.mockResolvedValueOnce([[{ trainer_id: 1, status: 'Scheduled' }]]);
+
+    const response = await request(createApp())
+      .post('/api/attendance')
+      .send({ session_id: 20, member_id: 10, attendance_status: 'present' });
+
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({ error: 'Attendance can only be marked for completed sessions' });
+    expect(mocks.pool.query).toHaveBeenCalledOnce();
   });
 
   it('requests subscriptions using gym schema columns and returns lowercase status', async () => {
