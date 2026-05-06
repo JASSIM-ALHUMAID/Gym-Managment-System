@@ -126,13 +126,12 @@ describe('trainer workflow routes', () => {
     expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining("'Pending'"), [5, 2, expect.any(String), expect.any(String)]);
   });
 
-  it('activates subscriptions without removed approval metadata', async () => {
+  it('approves subscriptions by creating pending payments', async () => {
     mocks.requireDemoUser.mockResolvedValueOnce({ user_id: 1, username: 'admin', role: 'admin', full_name: 'Admin', email: null, status: 'active' });
     mocks.connection.query.mockImplementation(async (sql: string) => {
-      if (sql.includes('FROM subscription') && sql.includes('FOR UPDATE')) return [[{ subscription_id: 7, member_id: 5 }]];
-      if (sql.includes('FROM member')) return [[{ member_id: 5 }]];
-      if (sql.includes("Status = 'Cancelled'")) return [{ affectedRows: 1 }];
-      if (sql.includes("Status = 'Active'")) return [{ affectedRows: 1 }];
+      if (sql.includes('FROM subscription') && sql.includes('FOR UPDATE')) return [[{ subscription_id: 7, member_id: 5, status: 'Pending', price: '150.00' }]];
+      if (sql.includes('FROM payment')) return [[{ count: 0 }]];
+      if (sql.includes('INSERT INTO payment')) return [{ insertId: 12 }];
       return [[]];
     });
 
@@ -141,11 +140,12 @@ describe('trainer workflow routes', () => {
       .send();
 
     expect(response.status).toBe(200);
-    expect(response.body.subscription).toEqual({ subscription_id: 7, status: 'active' });
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('SubscriptionID AS subscription_id, MemberUserID AS member_id'), [7]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining("Status = 'Cancelled'"), [5, 7]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.stringContaining("SET Status = 'Active'"), [7]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.not.stringContaining('approved_by_user_id'), [7]);
-    expect(mocks.connection.query).toHaveBeenNthCalledWith(4, expect.not.stringContaining('cancelled_at'), [7]);
+    expect(response.body.subscription).toEqual({ subscription_id: 7, status: 'pending' });
+    expect(response.body.payment).toEqual({ payment_id: 12, subscription_id: 7, amount: 150, payment_status: 'pending' });
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(1, expect.stringContaining('SubscriptionID AS subscription_id'), [7]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(2, expect.stringContaining('FROM payment'), [7]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.stringContaining('INSERT INTO payment'), [7, 150]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.not.stringContaining('approved_by_user_id'), [7, 150]);
+    expect(mocks.connection.query).toHaveBeenNthCalledWith(3, expect.not.stringContaining('cancelled_at'), [7, 150]);
   });
 });
