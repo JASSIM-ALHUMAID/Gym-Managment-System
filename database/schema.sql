@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS `attendance` (
   `AttendanceID` int(11) NOT NULL AUTO_INCREMENT,
   `BookingID` int(11) NOT NULL,
   `MarkedByTrainerUserID` int(11) NOT NULL,
-  `AttendanceStatus` varchar(20) DEFAULT NULL,
+  `AttendanceStatus` varchar(20) NOT NULL,
   `MarkedAt` datetime DEFAULT NULL,
   PRIMARY KEY (`AttendanceID`),
   UNIQUE KEY `BookingID` (`BookingID`),
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS `booking` (
   `MemberUserID` int(11) NOT NULL,
   `SessionID` int(11) NOT NULL,
   `BookingDate` date NOT NULL,
-  `BookingStatus` varchar(20) DEFAULT NULL,
+  `BookingStatus` varchar(20) NOT NULL DEFAULT 'Confirmed',
   PRIMARY KEY (`BookingID`),
   UNIQUE KEY `uq_booking_member_session` (`MemberUserID`,`SessionID`),
   KEY `fk_booking_session` (`SessionID`),
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS `payment` (
   `Amount` decimal(10,2) NOT NULL,
   `PaymentDate` date NOT NULL,
   `PaymentMethod` varchar(50) DEFAULT NULL,
-  `PaymentStatus` varchar(20) DEFAULT NULL,
+  `PaymentStatus` varchar(20) NOT NULL DEFAULT 'Pending',
   PRIMARY KEY (`PaymentID`),
   KEY `fk_payment_subscription` (`SubscriptionID`),
   CONSTRAINT `fk_payment_subscription` FOREIGN KEY (`SubscriptionID`) REFERENCES `subscription` (`SubscriptionID`) ON UPDATE CASCADE,
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS `session` (
   `StartTime` time NOT NULL,
   `EndTime` time NOT NULL,
   `Capacity` int(11) DEFAULT NULL,
-  `Status` varchar(20) DEFAULT NULL,
+  `Status` varchar(20) NOT NULL DEFAULT 'Scheduled',
   PRIMARY KEY (`SessionID`),
   KEY `fk_session_trainer` (`TrainerUserID`),
   CONSTRAINT `fk_session_trainer` FOREIGN KEY (`TrainerUserID`) REFERENCES `trainer` (`UserID`) ON UPDATE CASCADE,
@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS `subscription` (
   `PlanID` int(11) NOT NULL,
   `StartDate` date NOT NULL,
   `EndDate` date DEFAULT NULL,
-  `Status` varchar(20) DEFAULT NULL,
+  `Status` varchar(20) NOT NULL DEFAULT 'Pending',
   PRIMARY KEY (`SubscriptionID`),
   KEY `fk_subscription_member` (`MemberUserID`),
   KEY `fk_subscription_plan` (`PlanID`),
@@ -188,7 +188,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `FullName` varchar(100) NOT NULL,
   `Email` varchar(100) DEFAULT NULL,
   `Phone` varchar(20) DEFAULT NULL,
-  `Status` varchar(20) DEFAULT NULL,
+  `Status` varchar(20) NOT NULL DEFAULT 'Active',
   `CreatedAt` datetime NOT NULL,
   PRIMARY KEY (`UserID`),
   UNIQUE KEY `Username` (`Username`),
@@ -198,10 +198,10 @@ CREATE TABLE IF NOT EXISTS `user` (
 
 -- Dumping data for table gym_management.user: ~4 rows (approximately)
 INSERT INTO `user` (`UserID`, `Username`, `PasswordHash`, `FullName`, `Email`, `Phone`, `Status`, `CreatedAt`) VALUES
-	(1, 'ahmed_m', 'hash001', 'Ahmed Mohammed', 'ahmed@example.com', '0501111111', 'Active', '2026-01-01 09:00:00'),
-	(2, 'sara_a', 'hash002', 'Sara Ali', 'sara@example.com', '0502222222', 'Active', '2026-01-02 10:00:00'),
-	(3, 'khalid_t', 'hash003', 'Khalid Trainer', 'khalid@example.com', '0503333333', 'Active', '2026-01-03 11:00:00'),
-	(4, 'nora_t', 'hash004', 'Nora Trainer', 'nora@example.com', '0504444444', 'Active', '2026-01-04 12:00:00');
+	(1, 'ahmed_m', '$2b$10$e186jb97NAZ5kTTg3AyTE.vUGzPUhA5EUVVWRH2LLZzyB32.mjQr6', 'Ahmed Mohammed', 'ahmed@example.com', '0501111111', 'Active', '2026-01-01 09:00:00'),
+	(2, 'sara_a', '$2b$10$vwgPDkaejd7exPeACEUozOpLcLyAKJ7A9mwCk7Lz4rcVGoq2icbhC', 'Sara Ali', 'sara@example.com', '0502222222', 'Active', '2026-01-02 10:00:00'),
+	(3, 'khalid_t', '$2b$10$0NK7y0unBb6nByEaIdL/Xe71uNfO4jHbBOM1f4TKqThTYe3zeex7C', 'Khalid Trainer', 'khalid@example.com', '0503333333', 'Active', '2026-01-03 11:00:00'),
+	(4, 'nora_t', '$2b$10$9zHoNYjxoghLgIxzpWVcb.NiWf9B8cMp79MRLU5paYxdC0jjSWuMq', 'Nora Trainer', 'nora@example.com', '0504444444', 'Active', '2026-01-04 12:00:00');
 
 INSERT INTO `user` (`UserID`, `Username`, `PasswordHash`, `FullName`, `Email`, `Phone`, `Status`, `CreatedAt`) VALUES
   (5, 'admin1', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Admin User', 'admin@example.com', '0500000000', 'Active', '2026-01-01 08:00:00');

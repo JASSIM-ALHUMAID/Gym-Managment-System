@@ -14,6 +14,26 @@ describe('database schema constraints', () => {
     expect(schema).toContain("CONSTRAINT `chk_attendance_status` CHECK (`AttendanceStatus` in ('Present','Absent','Late'))");
   });
 
+  it('requires workflow status columns and applies logical defaults', () => {
+    expect(schema).toContain('`AttendanceStatus` varchar(20) NOT NULL');
+    expect(schema).toContain("`BookingStatus` varchar(20) NOT NULL DEFAULT 'Confirmed'");
+    expect(schema).toContain("`PaymentStatus` varchar(20) NOT NULL DEFAULT 'Pending'");
+    expect(schema).toContain("`Status` varchar(20) NOT NULL DEFAULT 'Scheduled'");
+    expect(schema).toContain("`Status` varchar(20) NOT NULL DEFAULT 'Pending'");
+    expect(schema).toContain("`Status` varchar(20) NOT NULL DEFAULT 'Active'");
+  });
+
+  it('seeds bcrypt password hashes for all demo roles', () => {
+    expect(schema).not.toContain("'hash001'");
+    expect(schema).not.toContain("'hash002'");
+    expect(schema).not.toContain("'hash003'");
+    expect(schema).not.toContain("'hash004'");
+    expect(schema).toMatch(/'ahmed_m', '\$2[aby]\$/);
+    expect(schema).toMatch(/'sara_a', '\$2[aby]\$/);
+    expect(schema).toMatch(/'khalid_t', '\$2[aby]\$/);
+    expect(schema).toMatch(/'nora_t', '\$2[aby]\$/);
+  });
+
   it('guards positive numeric fields and valid session times', () => {
     expect(schema).toContain('CONSTRAINT `chk_membershipplan_duration` CHECK (`DurationMonths` > 0)');
     expect(schema).toContain('CONSTRAINT `chk_membershipplan_price` CHECK (`Price` > 0)');
