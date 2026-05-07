@@ -109,10 +109,35 @@ describe('workflow route handlers', () => {
       status: 'scheduled',
       trainer_name: 'Nora Trainer'
     });
-    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('s.SessionTitle AS session_title'));
-    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('LOWER(s.Status) AS status'));
-    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('FROM `session` s'));
-    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining("BookingStatus IN ('Confirmed', 'Booked')"));
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('s.SessionTitle AS session_title'), []);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('LOWER(s.Status) AS status'), []);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('FROM `session` s'), []);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining("BookingStatus IN ('Confirmed', 'Booked')"), []);
+  });
+
+  it('lets trainers list their own completed sessions for attendance marking', async () => {
+    mocks.requireDemoUser.mockResolvedValueOnce({ user_id: 3, username: 'trainer', role: 'trainer', full_name: 'Trainer', email: null, status: 'active', trainer_id: 3 });
+    mocks.pool.query.mockResolvedValueOnce([[{
+      session_id: 21,
+      trainer_id: 3,
+      session_title: 'Completed Yoga Flow',
+      session_type: 'Yoga',
+      session_date: '2026-04-01',
+      start_time: '09:00:00',
+      end_time: '10:00:00',
+      capacity: 12,
+      status: 'completed',
+      trainer_name: 'Nora Trainer',
+      trainer_specialty: 'Yoga',
+      booked_count: 4
+    }]]);
+
+    const response = await request(createApp()).get('/api/sessions');
+
+    expect(response.status).toBe(200);
+    expect(response.body.sessions[0]).toMatchObject({ session_id: 21, trainer_id: 3, status: 'completed' });
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.stringContaining('WHERE s.TrainerUserID = ?'), [3]);
+    expect(mocks.pool.query).toHaveBeenCalledWith(expect.not.stringContaining("s.Status = 'Scheduled'"), [3]);
   });
 
   it('returns 409 when cancelling an already cancelled booking through the bookings route', async () => {

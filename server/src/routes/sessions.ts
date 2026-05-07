@@ -108,7 +108,16 @@ export const sessionsRouter = Router();
 
 sessionsRouter.get('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
-  const statusFilter = user.role === 'admin' ? '' : "WHERE s.Status = 'Scheduled'";
+  const filters: string[] = [];
+  const params: unknown[] = [];
+  if (user.role === 'trainer') {
+    if (!user.trainer_id) throw new HttpError(403, 'Trainer profile is required');
+    filters.push('s.TrainerUserID = ?');
+    params.push(user.trainer_id);
+  } else if (user.role !== 'admin') {
+    filters.push("s.Status = 'Scheduled'");
+  }
+  const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
 
   const [rows] = await pool.query(`
     SELECT s.SessionID AS session_id,
@@ -129,12 +138,12 @@ sessionsRouter.get('/', asyncHandler(async (req, res) => {
       LEFT JOIN (
         SELECT SessionID, COUNT(*) AS booked_count
           FROM booking
-         WHERE BookingStatus IN ('Confirmed', 'Booked')
-         GROUP BY SessionID
-      ) booked ON booked.SessionID = s.SessionID
-      ${statusFilter}
-     ORDER BY s.SessionDate, s.StartTime
-  `);
+          WHERE BookingStatus IN ('Confirmed', 'Booked')
+          GROUP BY SessionID
+       ) booked ON booked.SessionID = s.SessionID
+       ${whereClause}
+      ORDER BY s.SessionDate, s.StartTime
+  `, params);
 
   res.json({ sessions: rows });
 }));

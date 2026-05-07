@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const schema = readFileSync(resolve(import.meta.dirname, '../../database/schema.sql'), 'utf8');
+const seed = readFileSync(resolve(import.meta.dirname, '../../database/seed.sql'), 'utf8');
 
 describe('database schema constraints', () => {
   it('restricts status columns to application-supported values', () => {
@@ -28,15 +29,21 @@ describe('database schema constraints', () => {
     expect(schema).toContain("`Status` varchar(20) NOT NULL DEFAULT 'Active'");
   });
 
+  it('keeps sample data separate from schema definitions', () => {
+    expect(schema).not.toMatch(/INSERT INTO/i);
+    expect(seed).toMatch(/INSERT INTO `user`/);
+    expect(seed).toMatch(/INSERT INTO `attendance`/);
+  });
+
   it('seeds bcrypt password hashes for all demo roles', () => {
-    expect(schema).not.toContain("'hash001'");
-    expect(schema).not.toContain("'hash002'");
-    expect(schema).not.toContain("'hash003'");
-    expect(schema).not.toContain("'hash004'");
-    expect(schema).toMatch(/'ahmed_m', '\$2[aby]\$/);
-    expect(schema).toMatch(/'sara_a', '\$2[aby]\$/);
-    expect(schema).toMatch(/'khalid_t', '\$2[aby]\$/);
-    expect(schema).toMatch(/'nora_t', '\$2[aby]\$/);
+    expect(seed).not.toContain("'hash001'");
+    expect(seed).not.toContain("'hash002'");
+    expect(seed).not.toContain("'hash003'");
+    expect(seed).not.toContain("'hash004'");
+    expect(seed).toMatch(/'ahmed_m', '\$2[aby]\$/);
+    expect(seed).toMatch(/'sara_a', '\$2[aby]\$/);
+    expect(seed).toMatch(/'khalid_t', '\$2[aby]\$/);
+    expect(seed).toMatch(/'nora_t', '\$2[aby]\$/);
   });
 
   it('guards positive numeric fields and valid session times', () => {

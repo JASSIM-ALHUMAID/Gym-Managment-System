@@ -4,7 +4,7 @@ Role-based web app for managing gym members, trainers, staff/admin users, member
 
 ## Database Schema
 
-The implemented database schema is defined in `database/schema.sql`. It follows the original relational model in `Gym-Management-System-Relational-Model.pdf`, with one practical extension: a `staff` table used to identify administrator accounts.
+The implemented database schema is defined in `database/schema.sql`. Sample data is separated into `database/seed.sql` and should be run after the schema when demo accounts and sample workflows are needed. The schema follows the original relational model in `Gym-Management-System-Relational-Model.pdf`, with one practical extension: a `staff` table used to identify administrator accounts.
 
 Current tables:
 
@@ -220,10 +220,10 @@ Seeded admin account:
 
 ```sql
 INSERT INTO `user` (UserID, Username, PasswordHash, FullName, Email, Phone, Status, CreatedAt)
-VALUES (5, 'admin1', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Admin User', 'admin@example.com', '0500000000', 'Active', '2026-01-01 08:00:00');
+VALUES (1, 'admin1', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Admin User', 'admin@gymsys.local', '0500000000', 'Active', '2026-01-01 08:00:00');
 
 INSERT INTO staff (UserID, Position, HireDate)
-VALUES (5, 'Admin', '2026-01-01');
+VALUES (1, 'Admin', '2026-01-01');
 ```
 
 ### Subscriptions
