@@ -3,15 +3,33 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import type { DemoUser } from '../api';
 import { useAuth } from '../auth';
 
-const sampleUsers = [
-  { username: 'admin1', label: 'Admin User', role: 'Admin' }
-];
-
 export function dashboardPathFor(user: DemoUser) {
   if (user.role === 'admin') return '/admin';
   if (user.role === 'trainer') return '/trainer';
   return '/member';
 }
+
+type SampleUser = { username: string; full_name: string; role: string };
+
+const sampleUsers: SampleUser[] = [
+  { username: 'admin1', full_name: 'Admin User', role: 'admin' },
+  { username: 'khalid_t', full_name: 'Khalid Al-Saadi', role: 'trainer' },
+  { username: 'nora_t', full_name: 'Nora Al-Ghamdi', role: 'trainer' },
+  { username: 'yusuf_t', full_name: 'Yusuf Al-Dosari', role: 'trainer' },
+  { username: 'lina_t', full_name: 'Lina Hassan', role: 'trainer' },
+  { username: 'ahmed_m', full_name: 'Ahmed Mohammed', role: 'member' },
+  { username: 'sara_a', full_name: 'Sara Ali', role: 'member' },
+  { username: 'fatima_z', full_name: 'Fatima Al-Zahrani', role: 'member' },
+  { username: 'nasser_o', full_name: 'Nasser Al-Otaibi', role: 'member' },
+  { username: 'huda_s', full_name: 'Huda Al-Shehri', role: 'member' },
+  { username: 'ibrahim_r', full_name: 'Ibrahim Al-Rashid', role: 'member' },
+  { username: 'layla_m', full_name: 'Layla Mansour', role: 'member' },
+  { username: 'tariq_a', full_name: 'Tariq Al-Ahmadi', role: 'member' },
+  { username: 'aisha_b', full_name: 'Aisha Al-Balushi', role: 'member' },
+  { username: 'omar_q', full_name: 'Omar Al-Qahtani', role: 'member' },
+  { username: 'reem_h', full_name: 'Reem Al-Harbi', role: 'member' },
+  { username: 'majed_n', full_name: 'Majed Al-Najdi', role: 'member' },
+];
 
 export default function LoginPage() {
   const { user, login, register } = useAuth();
@@ -22,6 +40,7 @@ export default function LoginPage() {
   const [sampleUser, setSampleUser] = useState('admin1');
   const [username, setUsername] = useState(initialMode === 'register' ? '' : 'admin1');
   const [password, setPassword] = useState(initialMode === 'register' ? '' : 'password123');
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -69,7 +88,7 @@ export default function LoginPage() {
         <label className="quick-login" htmlFor="sampleUser">
           <span>Quick sample login</span>
           <select id="sampleUser" value={sampleUser} onChange={(event) => chooseSampleUser(event.target.value)}>
-            {sampleUsers.map((sample) => <option key={sample.username} value={sample.username}>{sample.label} - {sample.role}</option>)}
+            {sampleUsers.map((sample) => <option key={sample.username} value={sample.username}>{sample.full_name} - {sample.role}</option>)}
           </select>
         </label>
 
