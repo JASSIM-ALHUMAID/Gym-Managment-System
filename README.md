@@ -194,7 +194,7 @@ SELECT u.UserID AS user_id,
   LEFT JOIN staff st ON st.UserID = u.UserID
   LEFT JOIN trainer t ON t.UserID = u.UserID
   LEFT JOIN member m ON m.UserID = u.UserID
- WHERE u.Username = ?
+ WHERE u.Username = :username
  LIMIT 1;
 ```
 
@@ -204,10 +204,10 @@ Creates a new active member account in one transaction by inserting the user rec
 
 ```sql
 INSERT INTO `user` (Username, PasswordHash, FullName, Email, Phone, Status, CreatedAt)
-VALUES (?, ?, ?, ?, ?, 'Active', NOW());
+VALUES (:username, :password_hash, :full_name, :email, :phone, 'Active', NOW());
 
 INSERT INTO member (UserID, Gender, JoinDate)
-VALUES (?, ?, CURRENT_DATE);
+VALUES (:user_id, :gender, CURRENT_DATE);
 ```
 
 ### Admin Dashboard Counts
@@ -249,21 +249,21 @@ Create plan query:
 
 ```sql
 INSERT INTO membershipplan (PlanName, DurationMonths, Price, Description)
-VALUES (?, ?, ?, ?);
+VALUES (:plan_name, :duration_months, :price, :description);
 ```
 
 Update plan query:
 
 ```sql
 UPDATE membershipplan
-   SET PlanName = ?, DurationMonths = ?, Price = ?, Description = ?
- WHERE PlanID = ?;
+   SET PlanName = :plan_name, DurationMonths = :duration_months, Price = :price, Description = :description
+ WHERE PlanID = :plan_id;
 ```
 
 Delete plan query:
 
 ```sql
-DELETE FROM membershipplan WHERE PlanID = ?;
+DELETE FROM membershipplan WHERE PlanID = :plan_id;
 ```
 
 ### Members
@@ -367,7 +367,7 @@ SELECT s.SubscriptionID AS subscription_id,
        p.Price AS price
   FROM subscription s
   JOIN membershipplan p ON p.PlanID = s.PlanID
- WHERE s.MemberUserID = ?
+ WHERE s.MemberUserID = :member_id
  ORDER BY s.StartDate DESC;
 ```
 
@@ -397,7 +397,7 @@ Request subscription query:
 
 ```sql
 INSERT INTO subscription (MemberUserID, PlanID, StartDate, EndDate, Status)
-VALUES (?, ?, ?, ?, 'Pending');
+VALUES (:member_id, :plan_id, :start_date, :end_date, 'Pending');
 ```
 
 Approve subscription query:
@@ -406,7 +406,7 @@ Approving a pending subscription creates a pending payment for the plan price. T
 
 ```sql
 INSERT INTO payment (SubscriptionID, Amount, PaymentDate, PaymentMethod, PaymentStatus)
-VALUES (?, ?, CURDATE(), NULL, 'Pending');
+VALUES (:subscription_id, :amount, CURDATE(), NULL, 'Pending');
 ```
 
 Cancel subscription query:
@@ -414,7 +414,7 @@ Cancel subscription query:
 ```sql
 UPDATE subscription
    SET Status = 'Cancelled'
- WHERE SubscriptionID = ?;
+ WHERE SubscriptionID = :subscription_id;
 ```
 
 ### Payments
@@ -425,16 +425,16 @@ When an admin marks a payment as paid, the system activates the related pending 
 
 ```sql
 UPDATE payment
-   SET PaymentStatus = 'Paid', PaymentMethod = ?
- WHERE PaymentID = ?;
+   SET PaymentStatus = 'Paid', PaymentMethod = :payment_method
+ WHERE PaymentID = :payment_id;
 
 UPDATE subscription
    SET Status = 'Cancelled'
- WHERE MemberUserID = ? AND SubscriptionID <> ? AND Status = 'Active';
+ WHERE MemberUserID = :member_id AND SubscriptionID <> :subscription_id AND Status = 'Active';
 
 UPDATE subscription
    SET Status = 'Active'
- WHERE SubscriptionID = ? AND Status = 'Pending';
+ WHERE SubscriptionID = :subscription_id AND Status = 'Pending';
 ```
 
 Failed payments remain attached to the pending subscription so staff can retry or update the payment later.
@@ -454,7 +454,7 @@ SELECT pay.PaymentID AS payment_id,
   FROM payment pay
   JOIN subscription s ON s.SubscriptionID = pay.SubscriptionID
   JOIN membershipplan p ON p.PlanID = s.PlanID
- WHERE s.MemberUserID = ?
+ WHERE s.MemberUserID = :member_id
  ORDER BY pay.PaymentDate DESC;
 ```
 
@@ -483,7 +483,7 @@ SELECT pay.PaymentID AS payment_id,
 
 ### Sessions
 
-Shows sessions with trainer details and current booked count. Non-admin users only see scheduled sessions; admins can view all sessions.
+Shows sessions with trainer details and current booked count. Members only see scheduled sessions; trainers see their own sessions (all statuses); admins view all sessions.
 
 ```sql
 SELECT s.SessionID AS session_id,
@@ -515,21 +515,21 @@ Create session query:
 
 ```sql
 INSERT INTO `session` (TrainerUserID, SessionTitle, SessionType, SessionDate, StartTime, EndTime, Capacity, Status)
-VALUES (?, ?, ?, ?, ?, ?, ?, 'Scheduled');
+VALUES (:trainer_id, :session_title, :session_type, :session_date, :start_time, :end_time, :capacity, 'Scheduled');
 ```
 
 Update session query:
 
 ```sql
 UPDATE `session`
-   SET TrainerUserID = ?, SessionTitle = ?, SessionType = ?, SessionDate = ?, StartTime = ?, EndTime = ?, Capacity = ?
- WHERE SessionID = ?;
+   SET TrainerUserID = :trainer_id, SessionTitle = :session_title, SessionType = :session_type, SessionDate = :session_date, StartTime = :start_time, EndTime = :end_time, Capacity = :capacity
+ WHERE SessionID = :session_id;
 ```
 
 Update session status query:
 
 ```sql
-UPDATE `session` SET Status = ? WHERE SessionID = ?;
+UPDATE `session` SET Status = :status WHERE SessionID = :session_id;
 ```
 
 ### Bookings
@@ -553,7 +553,7 @@ SELECT b.BookingID AS booking_id,
   JOIN `session` s ON s.SessionID = b.SessionID
   JOIN trainer t ON t.UserID = s.TrainerUserID
   JOIN `user` u ON u.UserID = t.UserID
- WHERE b.MemberUserID = ?
+ WHERE b.MemberUserID = :member_id
  ORDER BY s.SessionDate DESC, s.StartTime DESC;
 ```
 
@@ -561,7 +561,7 @@ Create booking query:
 
 ```sql
 INSERT INTO booking (MemberUserID, SessionID, BookingDate, BookingStatus)
-VALUES (?, ?, CURDATE(), 'Confirmed');
+VALUES (:member_id, :session_id, CURDATE(), 'Confirmed');
 ```
 
 Cancel booking query:
@@ -569,7 +569,7 @@ Cancel booking query:
 ```sql
 UPDATE booking
    SET BookingStatus = 'Cancelled'
- WHERE BookingID = ?;
+ WHERE BookingID = :booking_id;
 ```
 
 ### Attendance
@@ -588,7 +588,7 @@ SELECT b.MemberUserID AS member_id,
   JOIN member m ON m.UserID = b.MemberUserID
   JOIN `user` u ON u.UserID = m.UserID
   LEFT JOIN attendance a ON a.BookingID = b.BookingID
- WHERE b.SessionID = ? AND b.BookingStatus IN ('Confirmed', 'Booked')
+ WHERE b.SessionID = :session_id AND b.BookingStatus IN ('Confirmed', 'Booked')
  ORDER BY u.FullName;
 ```
 
@@ -596,10 +596,11 @@ Mark attendance query:
 
 ```sql
 INSERT INTO attendance (BookingID, MarkedByTrainerUserID, AttendanceStatus, MarkedAt)
-VALUES (?, ?, ?, NOW())
+VALUES (:booking_id, :trainer_id, :attendance_status, NOW())
 ON DUPLICATE KEY UPDATE MarkedByTrainerUserID = VALUES(MarkedByTrainerUserID),
                         AttendanceStatus = VALUES(AttendanceStatus),
                         MarkedAt = NOW();
+```
 
 ## API Endpoints
 
@@ -612,7 +613,7 @@ ON DUPLICATE KEY UPDATE MarkedByTrainerUserID = VALUES(MarkedByTrainerUserID),
 | GET    | `/api/users`                  | Admin    | List all users                     |
 | PATCH  | `/api/users/:id/status`       | Admin    | Update user status                 |
 | GET    | `/api/members`                | Admin    | List all members                   |
-| GET    | `/api/trainers`               | All      | List trainers                      |
+| GET    | `/api/trainers`               | Admin, Member | List trainers                      |
 | POST   | `/api/trainers`               | Admin    | Create trainer account             |
 | GET    | `/api/plans`                  | All      | List plans                         |
 | POST   | `/api/plans`                  | Admin    | Create plan                        |
@@ -629,11 +630,11 @@ ON DUPLICATE KEY UPDATE MarkedByTrainerUserID = VALUES(MarkedByTrainerUserID),
 | PUT    | `/api/sessions/:id`           | Admin    | Update session                     |
 | PATCH  | `/api/sessions/:id/status`    | Admin    | Complete/cancel session            |
 | GET    | `/api/bookings`               | All      | List bookings (own or all)         |
-| POST   | `/api/bookings`               | Member   | Book session                       |
-| PATCH  | `/api/bookings/:id/cancel`    | Member   | Cancel own booking                 |
-| GET    | `/api/attendance/session/:id` | Trainer  | View attendance for session        |
+| POST   | `/api/bookings`               | Admin, Member | Book session                       |
+| PATCH  | `/api/bookings/:id/cancel`    | Admin, Member | Cancel own booking                 |
+| GET    | `/api/attendance/session/:id` | Admin, Trainer | View attendance for session        |
 | GET    | `/api/attendance/history`     | Trainer  | View own attendance history        |
-| POST   | `/api/attendance`             | Trainer  | Mark individual attendance         |
+| POST   | `/api/attendance`             | Admin, Trainer | Mark individual attendance         |
 
 ## Tests
 
