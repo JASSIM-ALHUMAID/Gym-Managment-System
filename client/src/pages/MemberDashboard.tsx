@@ -1,4 +1,4 @@
-import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../auth';
 import ResourceTable, { type ResourceColumn, type ResourceRow } from './ResourceTable';
 
@@ -101,7 +101,6 @@ const paymentColumns: ResourceColumn<PaymentRow>[] = [
 
 export default function MemberDashboard() {
   const { request } = useAuth();
-  const mountedRef = useRef(true);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
@@ -141,12 +140,6 @@ export default function MemberDashboard() {
   }
 
   useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -165,44 +158,81 @@ export default function MemberDashboard() {
     };
   }, [request]);
 
-  async function refreshAllSafely() {
-    const data = await loadMemberDashboardData();
-    if (mountedRef.current) applyMemberDashboardData(data);
-  }
-
-  async function runMemberAction(action: () => Promise<unknown>, successMessage: string, setPending: Dispatch<SetStateAction<Set<number>>>, pendingId: number) {
-    setPending((current) => {
-      const next = new Set(current);
-      next.add(pendingId);
-      return next;
-    });
+  async function bookSession(sessionId: number) {
+    setPendingSessionIds((prev) => { const next = new Set(prev); next.add(sessionId); return next; });
     setError(null);
     setMessage(null);
     try {
-      await action();
-      await refreshAllSafely();
-      if (mountedRef.current) setMessage(successMessage);
+      const result = await request<{ booking: { booking_id: number; member_id: number; session_id: number; booking_status: string } }>(
+        '/bookings', { method: 'POST', body: JSON.stringify({ session_id: sessionId }) }
+      );
+      setSessions((prev) => prev.map((s) =>
+        s.session_id === sessionId ? { ...s, booked_count: Number(s.booked_count) + 1 } : s
+      ));
+      setBookings((prev) => {
+        const existingIdx = prev.findIndex((b) => b.session_id === sessionId);
+        if (existingIdx >= 0) {
+          const updated = [...prev];
+          updated[existingIdx] = { ...updated[existingIdx], booking_status: result.booking.booking_status };
+          return updated;
+        }
+        const session = sessions.find((s) => s.session_id === sessionId);
+        if (!session) return prev;
+        const newBooking: BookingRow = {
+          booking_id: result.booking.booking_id,
+          session_id: sessionId,
+          session_type: session.session_type,
+          session_date: session.session_date,
+          start_time: session.start_time,
+          end_time: session.end_time,
+          trainer_name: session.trainer_name,
+          booking_status: result.booking.booking_status,
+        };
+        return [newBooking, ...prev];
+      });
+      setMessage('Session booked.');
     } catch (err) {
-      if (mountedRef.current) setError(err instanceof Error ? err.message : 'Action failed');
+      setError(err instanceof Error ? err.message : 'Booking failed');
     } finally {
-      if (mountedRef.current) {
-        setPending((current) => {
-          const next = new Set(current);
-          next.delete(pendingId);
-          return next;
-        });
-      }
+      setPendingSessionIds((prev) => { const next = new Set(prev); next.delete(sessionId); return next; });
+    }
+  }
+
+  async function cancelBooking(bookingId: number, sessionId: number) {
+    setPendingBookingIds((prev) => { const next = new Set(prev); next.add(bookingId); return next; });
+    setError(null);
+    setMessage(null);
+    try {
+      await request(`/bookings/${bookingId}/cancel`, { method: 'PATCH' });
+      setBookings((prev) => prev.map((b) =>
+        b.booking_id === bookingId ? { ...b, booking_status: 'cancelled' } : b
+      ));
+      setSessions((prev) => prev.map((s) =>
+        s.session_id === sessionId ? { ...s, booked_count: Math.max(0, Number(s.booked_count) - 1) } : s
+      ));
+      setMessage('Booking cancelled.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Cancellation failed');
+    } finally {
+      setPendingBookingIds((prev) => { const next = new Set(prev); next.delete(bookingId); return next; });
     }
   }
 
   async function requestSubscription(planId: number) {
     if (pendingPlanIds.size > 0 || hasPendingSubscription) return;
-    await runMemberAction(
-      () => request('/subscriptions/request', { method: 'POST', body: JSON.stringify({ plan_id: planId }) }),
-      'Request created. Admin will review it soon.',
-      setPendingPlanIds,
-      planId
-    );
+    setPendingPlanIds((prev) => { const next = new Set(prev); next.add(planId); return next; });
+    setError(null);
+    setMessage(null);
+    try {
+      await request('/subscriptions/request', { method: 'POST', body: JSON.stringify({ plan_id: planId }) });
+      const data = await request<{ subscriptions: SubscriptionRow[] }>('/subscriptions');
+      setSubscriptions(data.subscriptions);
+      setMessage('Request created. Admin will review it soon.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Request failed');
+    } finally {
+      setPendingPlanIds((prev) => { const next = new Set(prev); next.delete(planId); return next; });
+    }
   }
 
   function planFeatures(plan: PlanRow) {
@@ -257,7 +287,7 @@ export default function MemberDashboard() {
         const isBooking = pendingSessionIds.has(session.session_id);
         const label = alreadyBooked ? 'Booked' : !hasActiveSubscription ? 'Plan required' : isFull ? 'Full' : isBooking ? 'Booking...' : 'Book';
         return (
-          <button type="button" className="small-button" disabled={alreadyBooked || !hasActiveSubscription || isFull || isBooking} onClick={() => runMemberAction(() => request('/bookings', { method: 'POST', body: JSON.stringify({ session_id: session.session_id }) }), 'Session booked.', setPendingSessionIds, session.session_id)}>
+          <button type="button" className="small-button" disabled={alreadyBooked || !hasActiveSubscription || isFull || isBooking} onClick={() => bookSession(session.session_id)}>
             {label}
           </button>
         );
@@ -277,7 +307,7 @@ export default function MemberDashboard() {
       key: 'action',
       label: 'Action',
       render: (booking) => isActiveBookingStatus(booking.booking_status) ? (
-        <button type="button" className="small-button danger" disabled={pendingBookingIds.has(booking.booking_id)} onClick={() => runMemberAction(() => request(`/bookings/${booking.booking_id}/cancel`, { method: 'PATCH' }), 'Booking cancelled.', setPendingBookingIds, booking.booking_id)}>
+        <button type="button" className="small-button danger" disabled={pendingBookingIds.has(booking.booking_id)} onClick={() => cancelBooking(booking.booking_id, booking.session_id)}>
           {pendingBookingIds.has(booking.booking_id) ? 'Cancelling...' : 'Cancel'}
         </button>
       ) : '-'

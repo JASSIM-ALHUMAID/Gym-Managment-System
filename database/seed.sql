@@ -1,12 +1,6 @@
--- =====================================================================
--- Gym Management System - Sample Data
--- =====================================================================
--- Run AFTER database/schema.sql.
--- All seeded accounts use password: password123
--- =====================================================================
-
 USE `gym_management`;
 
+-- Clear existing data (Order matters because of Foreign Keys)
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE `attendance`;
 TRUNCATE TABLE `booking`;
@@ -20,7 +14,7 @@ TRUNCATE TABLE `member`;
 TRUNCATE TABLE `user`;
 SET FOREIGN_KEY_CHECKS = 1;
 
--- Shared bcrypt hash for password123.
+-- 1. Insert Users
 INSERT INTO `user` (`UserID`, `Username`, `PasswordHash`, `FullName`, `Email`, `Phone`, `Status`, `CreatedAt`) VALUES
 (1,  'admin1', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Admin User',       'admin@gymsys.local',    '0500000000', 'Active',    '2026-01-01 08:00:00'),
 (2,  'khalid_t', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Khalid Al-Saadi',  'khalid.t@gymsys.local', '0501000201', 'Active',    '2025-12-01 09:00:00'),
@@ -28,27 +22,30 @@ INSERT INTO `user` (`UserID`, `Username`, `PasswordHash`, `FullName`, `Email`, `
 (4,  'yusuf_t', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Yusuf Al-Dosari',  'yusuf.t@gymsys.local',  '0501000203', 'Active',    '2026-01-05 09:00:00'),
 (5,  'lina_t', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Lina Hassan',      'lina.t@gymsys.local',   '0501000204', 'Inactive',  '2026-02-15 09:00:00'),
 (6,  'ahmed_m', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Ahmed Mohammed',   'ahmed.m@example.com',   '0501000301', 'Active',    '2026-01-05 10:00:00'),
-(7,  'sara_a', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Sara Ali',         'sara.a@example.com',    '0501000302', 'Active',    '2026-01-08 10:00:00'),
+(7,  'sara_a', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Sara Ali',          'sara.a@example.com',    '0501000302', 'Active',    '2026-01-08 10:00:00'),
 (8,  'fatima_z', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Fatima Al-Zahrani','fatima.z@example.com',  '0501000303', 'Active',    '2026-01-15 10:00:00'),
 (9,  'nasser_o', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Nasser Al-Otaibi', 'nasser.o@example.com',  '0501000304', 'Active',    '2026-02-01 10:00:00'),
-(10, 'huda_s', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Huda Al-Shehri',   'huda.s@example.com',    '0501000305', 'Active',    '2026-02-10 10:00:00'),
+(10, 'huda_s', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Huda Al-Shehri',    'huda.s@example.com',    '0501000305', 'Active',    '2026-02-10 10:00:00'),
 (11, 'ibrahim_r', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Ibrahim Al-Rashid','ibrahim.r@example.com', '0501000306', 'Active',    '2026-02-20 10:00:00'),
-(12, 'layla_m', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Layla Mansour',    'layla.m@example.com',   '0501000307', 'Active',    '2026-03-01 10:00:00'),
-(13, 'tariq_a', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Tariq Al-Ahmadi',  'tariq.a@example.com',   '0501000308', 'Suspended', '2026-03-10 10:00:00'),
-(14, 'aisha_b', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Aisha Al-Balushi', 'aisha.b@example.com',   '0501000309', 'Active',    '2026-03-15 10:00:00'),
-(15, 'omar_q', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Omar Al-Qahtani',  'omar.q@example.com',    '0501000310', 'Active',    '2026-03-25 10:00:00'),
-(16, 'reem_h', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Reem Al-Harbi',    'reem.h@example.com',    '0501000311', 'Active',    '2026-04-05 10:00:00'),
-(17, 'majed_n', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Majed Al-Najdi',   'majed.n@example.com',   '0501000312', 'Inactive',  '2026-04-15 10:00:00');
+(12, 'layla_m', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Layla Mansour',     'layla.m@example.com',   '0501000307', 'Active',    '2026-03-01 10:00:00'),
+(13, 'tariq_a', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Tariq Al-Ahmadi',   'tariq.a@example.com',   '0501000308', 'Suspended', '2026-03-10 10:00:00'),
+(14, 'aisha_b', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Aisha Al-Balushi',  'aisha.b@example.com',   '0501000309', 'Active',    '2026-03-15 10:00:00'),
+(15, 'omar_q', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Omar Al-Qahtani',   'omar.q@example.com',    '0501000310', 'Active',    '2026-03-25 10:00:00'),
+(16, 'reem_h', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Reem Al-Harbi',     'reem.h@example.com',    '0501000311', 'Active',    '2026-04-05 10:00:00'),
+(17, 'majed_n', '$2b$10$NSMGGSD4LluqeEigu0KBrODaptsU/aI77GHY9OEBM4S9twTifGR4y', 'Majed Al-Najdi',    'majed.n@example.com',   '0501000312', 'Inactive',  '2026-04-15 10:00:00');
 
+-- 2. Insert Staff
 INSERT INTO `staff` (`UserID`, `Position`, `HireDate`) VALUES
 (1, 'Admin', '2026-01-01');
 
+-- 3. Insert Trainers
 INSERT INTO `trainer` (`UserID`, `Specialty`, `HireDate`) VALUES
 (2, 'Strength & Conditioning', '2025-12-01'),
-(3, 'Yoga & Pilates',          '2025-12-10'),
+(3, 'Yoga & Pilates',           '2025-12-10'),
 (4, 'CrossFit',                '2026-01-05'),
 (5, 'Cardio & HIIT',           '2026-02-15');
 
+-- 4. Insert Members
 INSERT INTO `member` (`UserID`, `Gender`, `JoinDate`) VALUES
 (6,  'Male',   '2026-01-05'),
 (7,  'Female', '2026-01-08'),
@@ -63,6 +60,7 @@ INSERT INTO `member` (`UserID`, `Gender`, `JoinDate`) VALUES
 (16, 'Female', '2026-04-05'),
 (17, 'Male',   '2026-04-15');
 
+-- 5. Membership Plans
 INSERT INTO `membershipplan` (`PlanID`, `PlanName`, `DurationMonths`, `Price`, `Description`) VALUES
 (1, 'Monthly Basic',     1,   150.00, 'Basic one-month gym access with equipment.'),
 (2, 'Quarterly Premium', 3,   400.00, 'Three-month access including group classes.'),
@@ -70,6 +68,7 @@ INSERT INTO `membershipplan` (`PlanID`, `PlanName`, `DurationMonths`, `Price`, `
 (4, 'Student Monthly',   1,   100.00, 'Discounted monthly plan for students with valid ID.'),
 (5, 'Family Quarterly',  3,   650.00, 'Three-month access for up to 3 family members.');
 
+-- 6. Subscriptions
 INSERT INTO `subscription` (`SubscriptionID`, `MemberUserID`, `PlanID`, `StartDate`, `EndDate`, `Status`) VALUES
 (1,  6,  1, '2026-01-05', '2026-02-04', 'Cancelled'),
 (2,  6,  3, '2026-02-05', '2027-02-04', 'Active'),
@@ -86,6 +85,7 @@ INSERT INTO `subscription` (`SubscriptionID`, `MemberUserID`, `PlanID`, `StartDa
 (13, 16, 3, '2026-05-15', '2027-05-14', 'Pending'),
 (14, 17, 1, '2026-04-15', '2026-05-14', 'Cancelled');
 
+-- 7. Payments
 INSERT INTO `payment` (`PaymentID`, `SubscriptionID`, `Amount`, `PaymentDate`, `PaymentMethod`, `PaymentStatus`) VALUES
 (1,  1,  150.00, '2026-01-05', 'Card',     'Paid'),
 (2,  2,  600.00, '2026-02-05', 'Card',     'Paid'),
@@ -104,6 +104,7 @@ INSERT INTO `payment` (`PaymentID`, `SubscriptionID`, `Amount`, `PaymentDate`, `
 (15, 13, 1200.00, '2026-05-12', 'Card',    'Pending'),
 (16, 14, 150.00, '2026-04-15', 'Card',     'Failed');
 
+-- 8. Sessions
 INSERT INTO `session` (`SessionID`, `TrainerUserID`, `SessionTitle`, `SessionType`, `SessionDate`, `StartTime`, `EndTime`, `Capacity`, `Status`) VALUES
 (1,  2, 'Morning Strength Foundations', 'Strength', '2026-04-10', '07:00:00', '08:00:00', 12, 'Completed'),
 (2,  2, 'Powerlifting Workshop',        'Strength', '2026-04-17', '18:00:00', '19:30:00', 8,  'Completed'),
@@ -118,6 +119,7 @@ INSERT INTO `session` (`SessionID`, `TrainerUserID`, `SessionTitle`, `SessionTyp
 (11, 4, 'CrossFit Open Gym',            'CrossFit', '2026-05-14', '19:00:00', '20:30:00', 12, 'Scheduled'),
 (12, 5, 'HIIT Blast',                   'HIIT',     '2026-05-05', '19:00:00', '19:45:00', 20, 'Cancelled');
 
+-- 9. Bookings
 INSERT INTO `booking` (`BookingID`, `MemberUserID`, `SessionID`, `BookingDate`, `BookingStatus`) VALUES
 (1,  6,  1, '2026-04-08', 'Confirmed'),
 (2,  7,  1, '2026-04-08', 'Confirmed'),
@@ -145,6 +147,7 @@ INSERT INTO `booking` (`BookingID`, `MemberUserID`, `SessionID`, `BookingDate`, 
 (24, 15, 8, '2026-05-02', 'Cancelled'),
 (25, 16, 4, '2026-04-16', 'Cancelled');
 
+-- 10. Attendance
 INSERT INTO `attendance` (`AttendanceID`, `BookingID`, `MarkedByTrainerUserID`, `AttendanceStatus`, `MarkedAt`) VALUES
 (1,  1, 2, 'Present', '2026-04-10 08:05:00'),
 (2,  2, 2, 'Present', '2026-04-10 08:05:00'),
