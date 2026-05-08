@@ -1,6 +1,130 @@
-# Gym Management System
+# Gym Management System — Pulse Studio
 
-Role-based web app for managing gym members, trainers, staff/admin users, membership plans, subscriptions, payments, sessions, bookings, and attendance.
+Full-stack role-based web app for managing gym members, trainers, staff, membership plans, subscriptions, payments, sessions, bookings, and attendance.
+
+Built for the ICS 321 project — a complete operational dashboard with three role-specific workspaces.
+
+## Project Status
+
+- **Database**: MySQL schema with 10 tables, CHECK constraints, foreign keys, and seeded demo data
+- **Backend**: Express.js REST API (TypeScript) with JWT auth, role middleware, workflow rules, and 69 unit tests
+- **Frontend**: React SPA (TypeScript, Vite) with role-based routing and command-style UI
+- **Testing**: Vitest — 7 test files covering auth, admin/member/trainer workflows, schema constraints, and route integration
+- **Brand**: Pulse Studio — all dashboards styled with a command-terminal aesthetic
+
+## Tech Stack
+
+| Layer    | Technology                              |
+| -------- | --------------------------------------- |
+| Frontend | React 19, TypeScript, Vite, React Router DOM 7 |
+| Backend  | Express.js 4, TypeScript, tsx (watch mode)    |
+| Database | MySQL (mysql2 driver)                   |
+| Auth     | bcryptjs + JSON Web Tokens              |
+| Testing  | Vitest + Supertest                      |
+
+## Project Structure
+
+```
+gym-management-system/
+├── client/                       # React SPA (Vite)
+│   └── src/
+│       ├── api.ts                # Typed API client with JWT
+│       ├── App.tsx               # Role-based routing + Shell layout
+│       ├── auth.tsx              # Auth provider (login, register, logout)
+│       ├── main.tsx              # Entry point
+│       ├── styles.css            # Command-terminal UI theme
+│       └── pages/
+│           ├── LandingPage.tsx    # Public landing with live stats
+│           ├── LoginPage.tsx      # Login/register with quick demo selector
+│           ├── AdminDashboard.tsx # 8-tab admin workspace
+│           ├── TrainerDashboard.tsx # Sessions + attendance marking
+│           ├── MemberDashboard.tsx  # Plans, bookings, payments
+│           └── ResourceTable.tsx    # Reusable data table component
+├── server/                       # Express REST API
+│   └── src/
+│       ├── index.ts             # App setup, route mounting
+│       ├── auth.ts              # JWT middleware (requireDemoUser, requireRole)
+│       ├── db.ts                # MySQL connection pool
+│       ├── http.ts              # Error handling utilities
+│       ├── types.ts             # Shared type definitions
+│       ├── workflowRules.ts     # Booking/attendance business logic
+│       └── routes/
+│           ├── auth.ts          # Login + member registration
+│           ├── dashboard.ts     # Admin counts + public stats
+│           ├── users.ts         # User CRUD + status management
+│           ├── members.ts       # Member profiles
+│           ├── trainers.ts      # Trainer CRUD
+│           ├── plans.ts         # Plan CRUD
+│           ├── subscriptions.ts # Request/approve/cancel subscriptions
+│           ├── payments.ts      # Payment status management
+│           ├── sessions.ts      # Session CRUD + status changes
+│           ├── bookings.ts      # Book/cancel sessions
+│           └── attendance.ts    # Mark + view attendance
+├── database/
+│   ├── schema.sql               # Full schema with constraints
+│   └── seed.sql                 # Demo data (17 users, plans, etc.)
+├── docs/                        # Project documentation
+└── package.json                 # Root workspace scripts
+```
+
+## Setup
+
+```bash
+# 1. Create the MySQL database
+mysql -u root < database/schema.sql
+
+# 2. Seed demo data
+mysql -u root < database/seed.sql
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env with your MySQL credentials
+
+# 4. Install dependencies
+npm run install:all
+
+# 5. Start dev servers (backend :4000, frontend :5173)
+npm run dev
+```
+
+### Demo Accounts
+
+All use password `password123`:
+
+| Username    | Role    | Full Name         |
+| ----------- | ------- | ----------------- |
+| `admin1`    | Admin   | Admin User        |
+| `khalid_t`  | Trainer | Khalid Al-Saadi   |
+| `nora_t`    | Trainer | Nora Al-Ghamdi    |
+| `ahmed_m`   | Member  | Ahmed Mohammed    |
+| `sara_a`    | Member  | Sara Ali          |
+
+## Role Dashboards
+
+### Admin (`/admin`)
+
+8-tab workspace: Overview, Users, Members, Trainers, Plans, Sessions, Payments, Reports.
+
+- Key metrics cards (active members, open payments, etc.)
+- Manage user status (activate/deactivate/suspend)
+- Create/update membership plans and sessions
+- Approve/reject subscription requests (triggers payment creation)
+- Mark payments paid (activates subscription, cancels other active subs)
+- Manage trainer accounts
+- View attendance reports
+
+### Trainer (`/trainer`)
+
+- View upcoming and completed assigned sessions
+- Select a session, load booked members, mark attendance (present/absent/late)
+- Attendance history view
+
+### Member (`/member`)
+
+- Overview: active subscription, pending requests, latest payment, booking count
+- Browse plans and request a subscription (admin must approve + mark paid)
+- View and book scheduled sessions (requires active subscription with paid payment)
+- Cancel own bookings
 
 ## Database Schema
 
@@ -476,4 +600,58 @@ VALUES (?, ?, ?, NOW())
 ON DUPLICATE KEY UPDATE MarkedByTrainerUserID = VALUES(MarkedByTrainerUserID),
                         AttendanceStatus = VALUES(AttendanceStatus),
                         MarkedAt = NOW();
+
+## API Endpoints
+
+| Method | Path                          | Role     | Description                        |
+| ------ | ----------------------------- | -------- | ---------------------------------- |
+| POST   | `/api/auth/login`             | Public   | Authenticate + receive JWT         |
+| POST   | `/api/auth/register`          | Public   | Register new member account        |
+| GET    | `/api/dashboard`              | Admin    | Dashboard counts                   |
+| GET    | `/api/dashboard/public-stats` | Public   | Landing page stats                 |
+| GET    | `/api/users`                  | Admin    | List all users                     |
+| PATCH  | `/api/users/:id/status`       | Admin    | Update user status                 |
+| GET    | `/api/members`                | Admin    | List all members                   |
+| GET    | `/api/trainers`               | All      | List trainers                      |
+| POST   | `/api/trainers`               | Admin    | Create trainer account             |
+| GET    | `/api/plans`                  | All      | List plans                         |
+| POST   | `/api/plans`                  | Admin    | Create plan                        |
+| PUT    | `/api/plans/:id`              | Admin    | Update plan                        |
+| DELETE | `/api/plans/:id`              | Admin    | Delete plan                        |
+| GET    | `/api/subscriptions`          | All      | List subscriptions (own or all)    |
+| POST   | `/api/subscriptions/request`  | Member   | Request subscription               |
+| PATCH  | `/api/subscriptions/:id/activate` | Admin | Approve + create payment         |
+| PATCH  | `/api/subscriptions/:id/cancel`  | Admin | Cancel subscription              |
+| GET    | `/api/payments`               | All      | List payments (own or all)         |
+| PATCH  | `/api/payments/:id/status`    | Admin    | Mark paid/failed                   |
+| GET    | `/api/sessions`               | All      | List sessions (filtered by role)   |
+| POST   | `/api/sessions`               | Admin    | Create session                     |
+| PUT    | `/api/sessions/:id`           | Admin    | Update session                     |
+| PATCH  | `/api/sessions/:id/status`    | Admin    | Complete/cancel session            |
+| GET    | `/api/bookings`               | All      | List bookings (own or all)         |
+| POST   | `/api/bookings`               | Member   | Book session                       |
+| PATCH  | `/api/bookings/:id/cancel`    | Member   | Cancel own booking                 |
+| GET    | `/api/attendance/session/:id` | Trainer  | View attendance for session        |
+| GET    | `/api/attendance/history`     | Trainer  | View own attendance history        |
+| POST   | `/api/attendance`             | Trainer  | Mark individual attendance         |
+
+## Tests
+
+Run the test suite:
+
+```bash
+npm test --prefix server
+```
+
+Tests use Vitest with mocked MySQL connections. Coverage includes:
+
+| Test file                   | Scope                                         |
+| --------------------------- | --------------------------------------------- |
+| `auth.test.ts`              | Login, registration, JWT issuance             |
+| `adminWorkflows.test.ts`    | User/plan/session CRUD, payment/sub lifecycle |
+| `memberWorkflows.test.ts`   | Registration, plan request, booking rules     |
+| `trainerWorkflows.test.ts`  | Attendance marking, session filtering         |
+| `schemaConstraints.test.ts` | CHECK constraints in schema.sql               |
+| `workflowRoutes.test.ts`    | Route-level integration                       |
+| `workflows.test.ts`         | End-to-end workflow scenarios                 |
 ```
