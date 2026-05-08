@@ -81,7 +81,7 @@ export default function LoginPage() {
           <span className="brand-symbol" aria-hidden="true">GMS</span>
           <span>Gym Management System</span>
         </Link>
-        <p className="eyebrow">Pulse Studio Access</p>
+        <p className="eyebrow">Gym Management Access</p>
         <h1>{mode === 'login' ? 'Welcome back' : 'Create member account'}</h1>
         <p className="muted">Use the seeded admin profile or register a new member account. The demo login uses <code>password123</code>.</p>
 

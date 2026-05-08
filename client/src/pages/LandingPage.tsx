@@ -44,7 +44,7 @@ export default function LandingPage() {
       <section className="landing-hero">
         <div className="hero-copy">
           <h1>Run memberships, classes, bookings, and attendance from one studio dashboard.</h1>
-          <p className="hero-lede">Pulse Studio gives admins, trainers, and members focused tools for daily gym operations without spreadsheet chaos.</p>
+           <p className="hero-lede">Admins, trainers, and members get focused tools for daily gym operations without spreadsheet chaos.</p>
           <div className="hero-actions">
             <Link className="button-link" to="/login">Enter system</Link>
             <Link className="ghost-link" to="/login?mode=register">Create member account</Link>

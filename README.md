@@ -1,4 +1,4 @@
-# Gym Management System — Pulse Studio
+# Gym Management System
 
 Full-stack role-based web app for managing gym members, trainers, staff, membership plans, subscriptions, payments, sessions, bookings, and attendance.
 
@@ -10,7 +10,7 @@ Built for the ICS 321 project — a complete operational dashboard with three ro
 - **Backend**: Express.js REST API (TypeScript) with JWT auth, role middleware, workflow rules, and 69 unit tests
 - **Frontend**: React SPA (TypeScript, Vite) with role-based routing and command-style UI
 - **Testing**: Vitest — 7 test files covering auth, admin/member/trainer workflows, schema constraints, and route integration
-- **Brand**: Pulse Studio — all dashboards styled with a command-terminal aesthetic
+
 
 ## Tech Stack
 
@@ -32,7 +32,7 @@ gym-management-system/
 │       ├── App.tsx               # Role-based routing + Shell layout
 │       ├── auth.tsx              # Auth provider (login, register, logout)
 │       ├── main.tsx              # Entry point
-│       ├── styles.css            # Command-terminal UI theme
+│       ├── styles.css            # Application styles
 │       └── pages/
 │           ├── LandingPage.tsx    # Public landing with live stats
 │           ├── LoginPage.tsx      # Login/register with quick demo selector

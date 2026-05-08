@@ -30,7 +30,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       <a className="skip-link" href="#main-content">Skip to main content</a>
       <aside className="command-sidebar" aria-label="Gym management navigation">
         <div className="brand-block">
-          <p className="eyebrow">Pulse Studio</p>
+          <p className="eyebrow">Gym Management</p>
           <h2>Gym Management</h2>
           <span>Operator #{user?.user_id ?? '----'}</span>
         </div>
