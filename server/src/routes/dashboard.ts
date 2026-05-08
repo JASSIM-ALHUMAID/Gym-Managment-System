@@ -13,6 +13,16 @@ async function count(sql: string) {
 
 export const dashboardRouter = Router();
 
+dashboardRouter.get('/public-stats', asyncHandler(async (_req, res) => {
+  const [activeMembers, scheduledSessions, bookings, openPayments] = await Promise.all([
+    count("SELECT COUNT(*) AS count FROM `user` u JOIN member m ON m.UserID = u.UserID WHERE u.Status = 'Active'"),
+    count("SELECT COUNT(*) AS count FROM session WHERE Status = 'Scheduled'"),
+    count('SELECT COUNT(*) AS count FROM booking'),
+    count("SELECT COUNT(*) AS count FROM payment WHERE PaymentStatus IN ('Pending', 'Failed')")
+  ]);
+  res.json({ activeMembers, scheduledSessions, bookings, openPayments });
+}));
+
 dashboardRouter.get('/', asyncHandler(async (req, res) => {
   const user = await requireDemoUser(req);
   requireRole(user, ['admin']);

@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { apiFetch } from '../api';
 
 const features = [
   { title: 'Membership Plans', text: 'Create plans, review subscription requests, and keep member access organized.' },
@@ -15,7 +17,17 @@ const roles = [
 
 const workflow = ['Create plans', 'Approve subscriptions', 'Schedule classes', 'Book members', 'Mark attendance', 'Review payments'];
 
+type Stats = { activeMembers: number; scheduledSessions: number; bookings: number; openPayments: number };
+
 export default function LandingPage() {
+  const [stats, setStats] = useState<Stats | null>(null);
+
+  useEffect(() => {
+    apiFetch<Stats>('/dashboard/public-stats')
+      .then(setStats)
+      .catch(() => {});
+  }, []);
+
   return (
     <main className="landing-page">
       <nav className="landing-nav" aria-label="Public navigation">
@@ -45,10 +57,10 @@ export default function LandingPage() {
             <strong>Live</strong>
           </div>
           <div className="console-grid">
-            <article><span>Active members</span><strong>884</strong></article>
-            <article><span>Classes today</span><strong>44</strong></article>
-            <article><span>Bookings</span><strong>128</strong></article>
-            <article><span>Open payments</span><strong>12</strong></article>
+            <article><span>Active members</span><strong>{stats?.activeMembers ?? '—'}</strong></article>
+            <article><span>Classes today</span><strong>{stats?.scheduledSessions ?? '—'}</strong></article>
+            <article><span>Bookings</span><strong>{stats?.bookings ?? '—'}</strong></article>
+            <article><span>Open payments</span><strong>{stats?.openPayments ?? '—'}</strong></article>
           </div>
         </aside>
       </section>
